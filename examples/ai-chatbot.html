@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Map</title>
+<!-- One external link only (the Inter font). Inline the woff2 as base64 to go fully offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ARCHITECTURE MAP — C4 container level, "Stage" house style.
+   DATA-DRIVEN: edit only the MODEL object near the bottom; the
+   engine renders boxes, pills and arrows from it. Features:
+     · Model D drill-down — click a card/pill → detail reveals
+       INLINE inside the card; card grows, neighbours reflow,
+       arrows recompute (no side panel).
+     · Networking toggle — port/protocol on edges + address line
+       on boxes (default off).
+     · copy buttons on file chips · pan (hold-drag) · wheel-zoom.
+   Theme via CSS variables — change --accent to rebrand. Muted
+   per-layer tints + neutral infra gray (anti-AI-slop). Self-contained.
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* ---- accent: the single brand knob (auto-pick from repo, else this) ---- */
+  --accent:#2563EB;--accent-dark:#1E40AF;--accent-soft:#EFF4FF;
+  /* ---- neutrals ---- */
+  --ink:#0B1220;--muted:#5A6678;--surface:#fff;--canvas-bg:#FAFBFC;--divider:#E4E8EE;
+  --good:#10B981;--warn:#F59E0B;--bad:#EF4444;
+  /* ---- LAYER TINTS: muted, equal-lightness; only show the ones you use ---- */
+  --l-frontend:#2563EB;--l-frontend-soft:#EFF3FF;
+  --l-backend:#7C3AED;--l-backend-soft:#F3EEFE;
+  --l-data:#0D9488;--l-data-soft:#E7F6F4;
+  --l-external:#D97706;--l-external-soft:#FBF1E3;
+  --l-mcp:#DB2777;--l-mcp-soft:#FCEDF4;
+  --l-infra:#64748B;--l-infra-soft:#EEF2F6;
+  --edge:#94A3B8;--edge-strong:#475569;
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;--shadow:0 4px 24px rgba(15,23,42,.08);
+}
+html[data-theme="dark"]{
+  --accent:#60A5FA;--accent-dark:#3B82F6;--accent-soft:#1E293B;
+  --ink:#F1F5F9;--muted:#94A3B8;--surface:#1E293B;--canvas-bg:#0B1220;--divider:#334155;
+  --l-frontend:#60A5FA;--l-frontend-soft:#16243B;--l-backend:#A78BFA;--l-backend-soft:#231b3a;
+  --l-data:#2DD4BF;--l-data-soft:#0f2b29;--l-external:#FBBF24;--l-external-soft:#2e2410;
+  --l-mcp:#F472B6;--l-mcp-soft:#321023;--l-infra:#94A3B8;--l-infra-soft:#1b2433;
+  --edge:#64748B;--edge-strong:#CBD5E1;
+}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--canvas-bg);color:var(--ink);overflow:hidden;display:flex;flex-direction:column}
+
+#topbar{flex:none;display:flex;align-items:center;gap:16px;padding:16px 24px;border-bottom:1px solid var(--divider);background:var(--surface)}
+.wordmark{font-size:17px;font-weight:800;display:flex;align-items:center;gap:9px}
+.wordmark .dot{width:13px;height:13px;border-radius:4px;background:var(--accent)}
+#topbar .sep{color:var(--divider)}
+#topbar .title{font-size:17px;font-weight:700}
+#topbar .meta{font-size:13px;color:var(--muted)}
+#topbar .spacer{flex:1}
+.nettog{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
+.nettog input{display:none}
+.nettog .sw{width:34px;height:19px;border-radius:999px;background:var(--divider);position:relative;transition:background .15s}
+.nettog .sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.nettog input:checked + .sw{background:var(--accent)}
+.nettog input:checked + .sw::after{transform:translateX(15px)}
+.zoom{display:flex;align-items:center;gap:6px}
+.zoom button{font-family:var(--font);font-size:15px;font-weight:700;color:var(--ink);width:31px;height:31px;border:1px solid var(--divider);background:var(--surface);border-radius:9px;cursor:pointer;line-height:1}
+.zoom button:hover{border-color:var(--accent);background:var(--accent-soft)}
+.zoom .fit{width:auto;padding:0 12px;font-size:13px}
+.zoom .pct{font-size:12px;color:var(--muted);min-width:42px;text-align:center}
+
+#legend{flex:none;display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding:10px 24px;border-bottom:1px solid var(--divider);background:var(--surface);font-size:12.5px}
+#legend .lg{display:flex;align-items:center;gap:7px;color:var(--muted);font-weight:600}
+#legend .sw{width:13px;height:13px;border-radius:4px;border:1.5px solid var(--ink)}
+#legend .eh{display:flex;align-items:center;gap:7px;color:var(--muted);margin-left:auto}
+#legend .eh svg{width:32px;height:12px}
+#legend .tip-hint{font-size:11.5px;color:var(--muted);opacity:.85}
+
+#canvas{flex:1;overflow:auto;position:relative;cursor:grab}
+#canvas.grabbing{cursor:grabbing}
+#diagram{position:relative;width:max-content;min-width:100%;padding:46px 56px 64px;transform-origin:top left;user-select:none}
+#edges{position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:1}
+#edge-labels{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4}
+.edge-label{position:absolute;transform:translate(-50%,-50%);font-size:11px;font-weight:700;color:var(--edge-strong);background:var(--canvas-bg);padding:2px 7px;border-radius:7px;border:1px solid var(--divider);white-space:nowrap}
+.edge-label.net{color:var(--accent-dark);border-color:var(--accent);background:var(--accent-soft)}
+
+.tier-row{display:flex;gap:46px;align-items:flex-start;justify-content:center;margin-bottom:54px;position:relative;z-index:3;flex-wrap:wrap}
+.tier-row:last-child{margin-bottom:0}
+
+.container,.node{position:relative;background:var(--surface);box-shadow:var(--shadow);z-index:3;cursor:grab}
+.container.dragging,.node.dragging{cursor:grabbing;z-index:5;box-shadow:0 8px 28px rgba(0,0,0,.18)}
+.container{border-radius:16px;border:1.5px solid var(--layer);min-width:224px;max-width:340px}
+.container.expanded{max-width:470px}
+.container::before,.node::before{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--layer-soft);opacity:.5;pointer-events:none}
+.container>*,.node>*{position:relative}
+.chead{display:flex;flex-direction:column;gap:3px;padding:14px 17px 11px;border-bottom:1px solid var(--divider);cursor:pointer;border-radius:16px 16px 0 0}
+.chead:hover{background:rgba(0,0,0,.015)}
+.ct{display:flex;align-items:center;gap:9px}
+/* the title is itself a clickable chip — same visual language as .pill */
+.ctitle{font-size:15px;font-weight:800;letter-spacing:-.3px;background:var(--canvas-bg);border:1px solid var(--divider);border-left:3px solid var(--layer);border-radius:8px;padding:4px 9px;transition:background .12s,border-color .12s;min-width:0;overflow-wrap:anywhere}
+.chead:hover .ctitle{border-color:var(--layer);background:var(--layer-soft)}
+.chead:active .ctitle{background:var(--layer);border-color:var(--layer);color:#fff}
+.ctech{font-size:11.5px;font-weight:600;color:var(--layer);text-transform:uppercase;letter-spacing:.05em}
+.ctag{margin-left:auto;font-size:10px;font-weight:700;color:#fff;background:var(--layer);padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.caret{font-size:11px;color:var(--muted);padding:2px 6px;border-radius:6px;margin-left:6px}
+.caret:hover{background:rgba(0,0,0,.06)}
+.container.collapsed .caret{transform:rotate(-90deg)}
+.netline{font-size:11px;font-family:var(--mono);color:var(--accent-dark);background:var(--accent-soft);border-radius:6px;padding:3px 8px;margin-top:6px;display:none;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+.netline.show{display:block}
+/* entry file path in the header — the file that IS this container */
+.centry{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:2px;overflow-wrap:anywhere;min-width:0}
+.pdim{opacity:.62}
+.pend{font-weight:700;color:var(--ink)}
+.comps{display:flex;flex-wrap:wrap;gap:7px;padding:13px 15px 15px}
+.container.collapsed .comps{display:none}
+.pill{font-size:12.5px;font-weight:600;color:var(--ink);background:var(--canvas-bg);border:1px solid var(--divider);border-left:3px solid var(--layer);border-radius:8px;padding:6px 10px;cursor:pointer;transition:transform .1s,border-color .12s,background .12s}
+.pill:hover{border-color:var(--layer);background:var(--layer-soft);transform:translateY(-1px)}
+.pill.active{background:var(--layer);border-color:var(--layer);color:#fff}
+
+/* node = a box with no components (a DB, an actor, a single service) */
+.node{border-radius:13px;border:1.5px solid var(--layer);min-width:150px;max-width:300px;cursor:pointer}
+.node .nhead{padding:14px 18px;text-align:center}
+.node.expanded{max-width:430px}
+.node .nt{font-size:15px;font-weight:800}
+.node .ns{font-size:11px;font-weight:600;color:var(--layer);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+.node .netline{text-align:left;margin:8px 14px 0}
+
+/* Model D — detail revealed INSIDE the card */
+.inline{display:flex;flex-direction:column;gap:9px;padding:0 15px 15px}
+.inline:empty{display:none}
+.node .inline{padding:0 14px 14px}
+.idrow{border:1px solid var(--divider);border-left:3px solid var(--layer);border-radius:10px;background:var(--canvas-bg);padding:12px 14px;animation:reveal .22s cubic-bezier(.2,.7,.2,1)}
+@keyframes reveal{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.idrow-h{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800;margin-bottom:8px}
+.idrow-h .dot{width:8px;height:8px;border-radius:3px;background:var(--layer);flex:none}
+.idrow-x{margin-left:auto;color:var(--muted);cursor:pointer;font-size:17px;line-height:1;padding:0 4px}
+.idrow-x:hover{color:var(--ink)}
+.idrow .d2{font-size:13px;line-height:1.55;color:var(--ink)}
+.dlabel{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:11px 0 6px}
+.files{display:flex;flex-direction:column;gap:5px}
+.fl{display:flex;align-items:flex-start;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--surface);border:1px solid var(--divider);padding:4px 5px 4px 9px;border-radius:7px}
+/* long paths WRAP (never clip / bleed out of the card): shared prefix dim, tail bold */
+.fl .path{flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.5;padding-top:2px}
+.fl .cp{flex:none;font-family:var(--font);font-size:10.5px;font-weight:700;color:var(--accent-dark);background:var(--accent-soft);border:none;border-radius:5px;padding:3px 8px;cursor:pointer}
+.fl .cp:hover{background:var(--accent);color:#fff}
+.kids{display:flex;flex-direction:column;gap:7px}
+.kid{display:flex;gap:10px;font-size:12.5px;line-height:1.45}
+.kid b{font-weight:700;color:var(--ink);flex:none;min-width:108px;font-family:var(--mono);font-size:11.5px}
+.kid span{color:var(--muted)}
+.talks{display:flex;flex-wrap:wrap;gap:6px}
+.talk{font-size:11.5px;font-weight:600;color:var(--edge-strong);background:var(--surface);border:1px solid var(--divider);border-radius:999px;padding:3px 10px}
+.talk b{color:var(--ink)}
+
+/* ---- What / How / Why — the lead content of a component drill-down ---- */
+.whw{display:flex;flex-direction:column;gap:5px}
+.whw div{font-size:12.5px;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}
+.whw b{display:inline-block;min-width:44px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+
+/* ---- Blender-style ports: inputs dotted on the LEFT edge, outputs on the RIGHT ---- */
+.ports{display:flex;gap:14px;margin:0 -14px;padding:0 4px;align-items:flex-start}
+.pcol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:7px}
+.pcol.out{align-items:flex-end}
+.phead{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.pcol.in .phead{padding-left:16px}
+.pcol.out .phead{padding-right:16px}
+.port{position:relative;font-size:11.5px;line-height:1.4;color:var(--ink);overflow-wrap:anywhere;max-width:100%}
+.pcol.in .port{padding-left:16px}
+.pcol.out .port{padding-right:16px;text-align:right}
+.port .pdot{position:absolute;top:4px;width:9px;height:9px;border-radius:50%;background:var(--layer);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--divider)}
+.pcol.in .port .pdot{left:-4px}
+.pcol.out .port .pdot{right:-4px}
+.port em{display:block;font-style:normal;font-size:10.5px;color:var(--muted);font-weight:600}
+.drawerbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.flowbtn{font-size:11px;font-weight:700;color:var(--accent-dark);background:var(--accent-soft);border:1px solid var(--accent);border-radius:999px;padding:4px 11px;cursor:pointer;font-family:var(--font)}
+.flowbtn:hover{background:var(--accent);color:#fff}
+
+/* ---- Data-flow / anatomy drawer: slides in from the LEFT, scrollable, nothing clips ---- */
+#scrim{position:fixed;inset:0;background:rgba(8,12,20,.34);opacity:0;pointer-events:none;transition:opacity .2s;z-index:59}
+#scrim.open{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;left:0;height:100%;width:min(470px,94vw);background:var(--surface);border-right:1px solid var(--divider);box-shadow:8px 0 34px rgba(15,23,42,.18);transform:translateX(-104%);transition:transform .26s cubic-bezier(.2,.7,.2,1);z-index:60;display:flex;flex-direction:column}
+#drawer.open{transform:none}
+#drawer .dwhead{flex:none;padding:14px 16px 0;border-bottom:1px solid var(--divider)}
+#drawer .dwtitle{display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:800}
+#drawer .dwtitle .dot{width:8px;height:8px;border-radius:3px;background:var(--layer,var(--accent));flex:none}
+#drawer .dwsub{font-size:11.5px;color:var(--muted);margin-top:3px;font-family:var(--mono);overflow-wrap:anywhere}
+#drawer .dwx{margin-left:auto;color:var(--muted);cursor:pointer;font-size:19px;line-height:1;padding:0 5px}
+#drawer .dwx:hover{color:var(--ink)}
+.dwtabs{display:flex;gap:4px;margin-top:11px}
+.dwtab{font-size:11.5px;font-weight:700;color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;padding:7px 10px;cursor:pointer;font-family:var(--font)}
+.dwtab:hover{color:var(--ink)}
+.dwtab.on{color:var(--ink);border-bottom-color:var(--accent)}
+#drawer .dwbody{flex:1;min-height:0;overflow:auto;padding:16px}
+.lane{display:flex;flex-direction:column;align-items:stretch}
+.fcap{font-size:11px;font-weight:700;color:var(--accent-dark);background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:6px 10px;overflow-wrap:anywhere}
+.fconn{flex:none;height:20px;position:relative}
+.fconn::before{content:"";position:absolute;left:50%;top:0;bottom:6px;width:2px;margin-left:-1px;background:var(--edge)}
+.fconn::after{content:"";position:absolute;left:50%;bottom:0;margin-left:-5px;border:5px solid transparent;border-top-color:var(--edge)}
+.fnode{border:1px solid var(--divider);border-left:3px solid var(--layer,var(--accent));border-radius:10px;background:var(--canvas-bg);padding:10px 12px;min-width:0}
+.fnode.ext{border-style:dashed;border-left-style:solid;border-left-color:var(--accent);background:var(--accent-soft)}
+.fn-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.fn-h .fn-l{font-size:12.5px;font-weight:800;overflow-wrap:anywhere}
+.fn-h .fn-f{font-family:var(--mono);font-size:10.5px;color:var(--muted);overflow-wrap:anywhere}
+.fn-src{font-family:var(--mono);font-size:10px;color:var(--accent-dark);background:var(--surface);border:1px solid var(--divider);border-radius:6px;padding:2px 6px;margin-top:6px;display:block;overflow-wrap:anywhere}
+.fn-io{display:flex;flex-direction:column;gap:3px;margin-top:7px}
+.fn-io div{font-size:11px;line-height:1.45;color:var(--ink);overflow-wrap:anywhere}
+.fn-io b{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-right:6px}
+.subs{margin-top:9px;border-top:1px dashed var(--divider);padding-top:9px}
+.subs .subs-h{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:7px}
+.fnode.sub{padding:8px 10px;background:var(--surface)}
+.fnode.sub .fn-h .fn-l{font-size:11.5px}
+.fnode.sub .fn-io div{font-size:10.5px}
+.subs .fconn{height:15px}
+.branches{display:flex;gap:10px;align-items:stretch}
+.branches .blane{flex:1 1 0;min-width:0;display:flex;flex-direction:column;border:1px dashed var(--divider);border-radius:12px;padding:9px}
+.branches .bname{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:7px}
+.anat{display:flex;flex-direction:column;gap:9px}
+.asec{border:1px solid var(--divider);border-left:3px solid var(--layer,var(--accent));border-radius:10px;background:var(--canvas-bg);padding:10px 12px}
+.asec .a-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.asec .a-n{font-size:12.5px;font-weight:800}
+.asec .a-l{font-family:var(--mono);font-size:10.5px;color:var(--accent-dark);background:var(--accent-soft);border-radius:5px;padding:1px 6px}
+.asec .a-w{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.asec .a-s{font-size:11.5px;line-height:1.5;color:var(--ink);margin-top:6px;overflow-wrap:anywhere}
+
+#tip{position:fixed;z-index:99;pointer-events:none;opacity:0;background:var(--ink);color:#fff;border-radius:9px;padding:8px 11px;font-size:11.5px;font-weight:600}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--ink);color:#fff;font-size:12.5px;font-weight:600;padding:9px 16px;border-radius:9px;opacity:0;transition:opacity .18s,transform .18s;z-index:99;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%)}
+@media print{body{overflow:visible;height:auto}#canvas{overflow:visible}.zoom,.nettog{display:none}}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <div class="wordmark"><span class="dot"></span><span id="wm-brand"></span></div>
+  <span class="sep">/</span><span class="title" id="wm-title"></span>
+  <span class="meta" id="wm-meta">Architecture map</span>
+  <span class="spacer"></span>
+  <label class="nettog"><input type="checkbox" id="net"><span class="sw"></span>Network details</label>
+  <div class="zoom">
+    <button class="fit" id="z-fit">Fit</button><button id="z-out">&minus;</button>
+    <span class="pct" id="z-pct">100%</span><button id="z-in">+</button>
+  </div>
+</div>
+<div id="legend"></div>
+<div id="canvas">
+  <div id="diagram">
+    <svg id="edges"><defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--edge)"></path></marker>
+    </defs></svg>
+    <div id="edge-labels"></div>
+    <div id="rows"></div>
+  </div>
+</div>
+<div id="scrim"></div>
+<aside id="drawer" aria-hidden="true">
+  <div class="dwhead">
+    <div class="dwtitle"><span class="dot"></span><span id="dw-title"></span><span class="dwx" id="dw-x">×</span></div>
+    <div class="dwsub" id="dw-sub"></div>
+    <div class="dwtabs" id="dw-tabs"></div>
+  </div>
+  <div class="dwbody" id="dw-body"></div>
+</aside>
+<div id="tip"></div>
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   MODEL — THE ONLY THING THE SKILL EDITS. The engine renders it.
+   Fill from the approved review-gate model + the enrichment pass.
+
+   node (a box). kind:'container' has pills; kind:'node' has none.
+     {label, tech, layer, kind, summary, entry:[..], net?, talksTo?[], components:[…]}
+     entry[0] also renders in the card HEADER (the file that IS this container).
+   component: {id, label, one,
+     summary?           1–2 sentences (fallback when whatHowWhy is absent)
+     whatHowWhy?  {what,how,why}   three short lines — leads the drill-down
+     ports?       {in:[{label,from}], out:[{label,to}]}   Blender-style edge dots
+     flow?        [step]            ordered function chain → "Data flow" drawer tab
+     anatomy?     [{section,lines,runsWhen,summary}]  → "Code anatomy" drawer tab
+     files:[..], kids?[{label,txt}], talksTo?[{to,via}], net?}
+   step:  {id?, label, fn?, file?, external?, in, does, out, branch?, children?:[step]}
+     fn        = the function/symbol that runs (e.g. 'extract_codes()')
+     file      = source file of the step's main function
+     external  = true when that function is IMPORTED from another file → rendered
+                 differently (dashed/accented) with `file` shown, so the reader
+                 knows where to zoom in next.
+     children  = nested sub-cards (the helpers this step calls), each with its own
+                 in/does/out, stacked vertically with arrows in call order.
+     branch    = lane name. CONSECUTIVE steps carrying `branch` form one parallel
+                 group: each distinct value is a side-by-side lane, and the next
+                 step without `branch` is where the lanes re-merge. Omit for a
+                 straight single lane (the normal case).
+   edge: {from:<nodeId>, to:<nodeId>, label, net?}   (ids are NODE ids, not component ids)
+   layout: rows of node ids, laid out top→down (client → server → data/external).
+
+   Detail fields drive the Model D drill-down:
+     summary  = 1–2 sentences (component) / 2–3 (card overview)
+     files    = real path(s)/glob(s) — shown with a copy button; the shared prefix
+                renders dim, the last 1–2 segments bold, and long paths WRAP
+     kids     = flat child list (routes/screens/tools/stages/tables), CAP ~8 then "+N more"
+     talksTo  = this thing's edges, e.g. {to:'PostgreSQL', via:'PostgREST'}
+     net      = networking facts (ports/domains/TLS), shown only when the toggle is on
+   ports/flow/anatomy are OPTIONAL — add them only where they carry real signal
+   (a component with real logic gets a flow; a big file worth studying gets anatomy).
+   Keep only the layers you use in `legend`. Everything must trace to real code.
+   ============================================================ */
+const MODEL = {
+  repo:'ai-chatbot',
+  brand:'Vercel',
+  date:'',
+  legend:[['frontend','Frontend'],['backend','Backend'],['data','Data'],['external','External'],['infra','Infra / edge']],
+  layout:[
+    ['n-browser'],
+    ['c-edge'],
+    ['c-frontend'],
+    ['c-auth','c-api','c-ai'],
+    ['c-tooling','n-redis','c-postgres','n-blob','c-external'],
+  ],
+  nodes:{
+
+    'n-browser':{label:'Browser',tech:'End user',layer:'infra',kind:'node',
+      net:'HTTPS : 443 (chat.vercel.ai in metadataBase)',
+      summary:'The person chatting. Loads the React app, streams assistant tokens over SSE, uploads images, and carries the next-auth session cookie on every request.',
+      files:['app/layout.tsx']},
+
+    'c-edge':{label:'Edge proxy',tech:'Next.js proxy (middleware)',layer:'infra',kind:'container',
+      net:'runs before every matched route; matcher in proxy.ts config',
+      summary:'Runs ahead of every page and API route. Reads the next-auth JWT and, if there is none, bounces the visitor through guest sign-in so nobody ever hits the app unauthenticated.',
+      entry:['proxy.ts'],
+      talksTo:[{to:'Auth',via:'getToken / redirect'}],
+      components:[
+        {id:'px-proxy',label:'proxy()',one:'session gate',
+          whatHowWhy:{what:'The single request gate in front of pages and /api routes.',
+            how:'Short-circuits /ping and /api/auth, then decodes the next-auth JWT with getToken(); no token means a redirect to /api/auth/guest?redirectUrl=..., and a signed-in non-guest hitting /login or /register is sent home.',
+            why:'The app assumes a session everywhere (chat ownership, entitlements, rate limits), so the guest identity has to be minted before any handler runs.'},
+          ports:{in:[{label:'request URL + cookies -> who is this','from':'Browser'},
+                     {label:'AUTH_SECRET -> JWT decode key',from:'env (process.env.AUTH_SECRET)'}],
+                 out:[{label:'302 -> /api/auth/guest (mint guest session)',to:'app/(auth)/api/auth/guest/route.ts'},
+                      {label:'NextResponse.next() -> request continues',to:'App Router route handlers'}]},
+          flow:[
+            {label:'Health + auth bypass',fn:'pathname.startsWith()',
+             in:'NextRequest',does:'Answers /ping with "pong"; lets /api/auth/* through untouched so sign-in can work.',out:'Request that still needs a session'},
+            {label:'Decode session',fn:'getToken()',file:'next-auth/jwt',external:true,
+             in:'Cookie header + AUTH_SECRET',does:'Verifies and decodes the session JWT (secureCookie off in dev).',out:'JWT { id, type, email } or null'},
+            {label:'No token -> guest',fn:'NextResponse.redirect()',branch:'anonymous',
+             in:'null token',does:'Encodes the original pathname and redirects to the guest sign-in route.',out:'302 to /api/auth/guest?redirectUrl=...'},
+            {label:'Token -> page rules',fn:'guestRegex.test()',branch:'signed in',
+             in:'JWT',does:'Classifies guest vs regular; a regular user asking for /login or /register is redirected to /.',out:'302 home, or fall through'},
+            {label:'Continue',fn:'NextResponse.next()',
+             in:'Either branch that did not redirect',does:'Hands the request to the matched route.',out:'Request -> App Router'},
+          ],
+          summary:'Token gate + guest bootstrap for every matched path.',
+          files:['proxy.ts','lib/constants.ts'],
+          talksTo:[{to:'Auth',via:'JWT'}]},
+      ]},
+
+    'c-frontend':{label:'Chat UI',tech:'Next.js App Router · React 19',layer:'frontend',kind:'container',
+      net:'RSC + client components; SSE to /api/chat, SWR polling for history',
+      summary:'The App Router client. A single persistent ChatShell drives the conversation through the AI SDK useChat transport, renders streamed message parts, and opens artifacts (text / code / sheet / image) in a side canvas.',
+      entry:['app/layout.tsx'],
+      talksTo:[{to:'API routes',via:'fetch / SSE'},{to:'Auth',via:'next-auth session'}],
+      components:[
+        {id:'fe-routes',label:'Routes & pages',one:'App Router tree',
+          summary:'Two route groups: (chat) holds the layout that mounts the sidebar + ChatShell, while the / and /chat/[id] pages themselves render null because the shell lives in the layout and swaps chats client-side, and (auth) holds login/register.',
+          files:['app/(chat)/layout.tsx','app/(chat)/page.tsx','app/(chat)/chat/[id]/page.tsx','app/(auth)/login/page.tsx','app/(auth)/register/page.tsx','app/globals.css','public/images/'],
+          kids:[{label:'static assets',txt:'favicon and the opengraph/twitter images in app/, demo art in public/images/.'}]},
+        {id:'fe-shell',label:'Chat shell',one:'conversation UI',
+          whatHowWhy:{what:'The always-mounted chat surface: header, message list, composer, artifact canvas.',
+            how:'useActiveChat() owns the AI SDK chat object; ChatShell wires messages/status/stop/regenerate into Messages + MultimodalInput and mounts DataStreamHandler so custom data-* parts (artifact id/kind, waiting status, chat title) update client state as they arrive.',
+            why:'Keeping the shell in the layout (not the page) is what lets a chat keep streaming while the user navigates between chats.'},
+          ports:{in:[{label:'SSE UI message stream -> rendered parts',from:'/api/chat (POST)'},
+                     {label:'chat list + votes (SWR) -> sidebar & actions',from:'/api/history, /api/vote'}],
+                 out:[{label:'user message + selected model -> chat turn',to:'/api/chat (POST)'},
+                      {label:'image/pdf attachment -> blob URL',to:'/api/files/upload'}]},
+          summary:'ChatShell + composer + message rendering.',
+          files:['components/chat/shell.tsx','components/chat/messages.tsx','components/chat/multimodal-input.tsx','components/chat/message.tsx','components/chat/chat-header.tsx','components/chat/data-stream-handler.tsx'],
+          talksTo:[{to:'API routes',via:'SSE'}]},
+        {id:'fe-elements',label:'AI elements',one:'streamed rendering',
+          summary:'Presentation primitives for model output: conversation container, message bubbles, reasoning blocks, tool call cards, model selector, code blocks (Shiki) and Streamdown markdown with math (KaTeX) and mermaid.',
+          files:['components/ai-elements/conversation.tsx','components/ai-elements/tool.tsx','components/ai-elements/reasoning.tsx','components/ai-elements/model-selector.tsx','components/ai-elements/code-block.tsx']},
+        {id:'fe-artifacts',label:'Artifacts canvas',one:'documents beside chat',
+          summary:'Client half of the artifact system: a kind registry (text / code / sheet / image) whose entries declare their own toolbar actions and streamed-part handlers, rendered in a slide-over canvas with version history and diff view.',
+          files:['components/chat/artifact.tsx','components/chat/create-artifact.tsx','artifacts/text/client.tsx','artifacts/code/client.tsx','artifacts/sheet/client.tsx','artifacts/image/client.tsx','artifacts/actions.ts'],
+          kids:[{label:'text',txt:'ProseMirror document with inline suggestions.'},{label:'code',txt:'CodeMirror editor + Pyodide run console.'},{label:'sheet',txt:'react-data-grid over CSV (papaparse).'},{label:'image',txt:'Read-only generated image view.'}]},
+        {id:'fe-editors',label:'Editors',one:'ProseMirror · CodeMirror',
+          summary:'The editing engines the artifacts mount: ProseMirror schema/config, markdown serialisation, a React node renderer for inline suggestion widgets, and a diff view built on diff-match-patch.',
+          files:['lib/editor/config.ts','lib/editor/functions.tsx','lib/editor/suggestions.tsx','lib/editor/react-renderer.tsx','lib/editor/diff.js']},
+        {id:'fe-hooks',label:'Hooks & state',one:'client state',
+          summary:'useActiveChat holds the live chat instance; the rest cover artifact state, message grouping, scroll anchoring, resumable-stream auto-resume, chat visibility and viewport size. Server data is fetched with SWR, with nanoid for client ids, date-fns for timestamps and fast-deep-equal guarding the memoised message renders.',
+          files:['hooks/use-active-chat.tsx','hooks/use-artifact.ts','hooks/use-messages.tsx','hooks/use-auto-resume.ts','hooks/use-chat-visibility.ts','hooks/use-scroll-to-bottom.tsx','hooks/use-mobile.ts']},
+        {id:'fe-ui',label:'UI kit',one:'Radix · Tailwind 4',
+          summary:'shadcn-style primitives over Radix (sidebar, dialog, dropdown, command palette, tooltip, select), themed by next-themes and Tailwind 4, with sonner toasts and motion/framer-motion transitions.',
+          files:['components/ui/*.tsx','components/theme-provider.tsx','components.json','postcss.config.mjs']},
+      ]},
+
+    'c-auth':{label:'Auth',tech:'NextAuth 5 (beta) · JWT',layer:'backend',kind:'container',
+      net:'/api/auth/* (basePath) · JWT session cookie, secure outside dev',
+      summary:'Two credential providers over one User table: a real email/password login (bcrypt) and a zero-friction guest provider that creates a throwaway user row. Sessions are JWTs, so the proxy can read them at the edge.',
+      entry:['app/(auth)/auth.ts'],
+      talksTo:[{to:'PostgreSQL',via:'SQL'}],
+      components:[
+        {id:'au-nextauth',label:'NextAuth config',one:'providers + callbacks',
+          whatHowWhy:{what:'The NextAuth instance the whole app imports as auth() / signIn() / signOut().',
+            how:'Two Credentials providers: the default one looks the user up by email and bcrypt-compares the password; the "guest" one calls createGuestUser() and returns it. jwt/session callbacks copy id and type ("guest" | "regular") onto the token and session.',
+            why:'user.type is the entitlement key the chat route throttles on, and it has to survive into the edge JWT so the proxy can tell guests from members without a DB hit.'},
+          ports:{in:[{label:'email + password (or empty guest creds) -> identity',from:'app/(auth)/actions.ts, /api/auth/guest'},
+                     {label:'User rows -> stored hash & id',from:'lib/db/queries.ts (Postgres)'}],
+                 out:[{label:'JWT { id, type } -> session cookie',to:'Browser / Edge proxy'},
+                      {label:'session.user -> every server handler',to:'app/(chat)/api/* route handlers'}]},
+          flow:[
+            {label:'Sign-in request',fn:'signIn(provider, creds)',file:'app/(auth)/actions.ts',external:true,
+             in:'Login form action, or the guest route',does:'Server action validates the form with zod and calls signIn with "credentials" or "guest".',out:'Provider + credentials'},
+            {label:'Password login',fn:'authorize({email,password})',branch:'credentials',
+             in:'email + password',does:'getUser(email); on a missing user or null password it still bcrypt-compares against DUMMY_PASSWORD, then compares the real hash.',out:'User with type "regular", or null',
+             children:[
+               {label:'Lookup',fn:'getUser()',in:'email',does:'SELECT from User by email.',out:'User[]'},
+               {label:'Constant-time reject',fn:'compare(password, DUMMY_PASSWORD)',in:'no user / no hash',does:'Burns the same bcrypt time as a real check so timing does not leak account existence.',out:'null'},
+               {label:'Verify',fn:'compare(password, user.password)',in:'stored hash',does:'bcrypt-ts comparison.',out:'true / false'},
+             ]},
+            {label:'Guest login',fn:'authorize()',branch:'guest',
+             in:'empty credentials',does:'createGuestUser() inserts a guest-<ms> user with a random hashed password.',out:'User with type "guest"'},
+            {label:'Mint token',fn:'callbacks.jwt()',
+             in:'Authorized user',does:'Copies user.id and user.type onto the JWT.',out:'Signed session JWT'},
+            {label:'Expose session',fn:'callbacks.session()',
+             in:'JWT',does:'Rehydrates session.user.id / .type for server code.',out:'Session -> route handlers and the proxy'},
+          ],
+          summary:'NextAuth instance: credentials + guest providers, JWT callbacks.',
+          files:['app/(auth)/auth.ts','app/(auth)/auth.config.ts','lib/constants.ts'],
+          talksTo:[{to:'PostgreSQL',via:'SQL'}]},
+        {id:'au-routes',label:'/api/auth/*',one:'handlers',
+          summary:'The NextAuth catch-all handler plus a guest route that signs a visitor in as a guest and redirects them back to where the proxy caught them.',
+          files:['app/(auth)/api/auth/[...nextauth]/route.ts','app/(auth)/api/auth/guest/route.ts'],
+          net:'GET/POST /api/auth/* (basePath "/api/auth")'},
+        {id:'au-forms',label:'Login & register',one:'server actions',
+          summary:'Server actions behind the login and register forms: zod-validate the credentials, hash and insert on register, then signIn; the pages themselves are client components with useActionState.',
+          files:['app/(auth)/actions.ts','app/(auth)/layout.tsx','components/chat/auth-form.tsx','components/chat/sign-out-form.tsx']},
+      ]},
+
+    'c-api':{label:'API routes',tech:'Next.js Route Handlers',layer:'backend',kind:'container',
+      net:'/api/* on the app origin · POST /api/chat streams SSE (maxDuration 60s)',
+      summary:'Every server entry point of the app. /api/chat is the big one: it authenticates, throttles, rebuilds the conversation, streams the model through the AI Gateway and persists the result. The rest are plain CRUD over the same Drizzle queries.',
+      entry:['app/(chat)/api/chat/route.ts'],
+      talksTo:[{to:'AI layer',via:'import'},{to:'PostgreSQL',via:'Drizzle / SQL'},{to:'Redis',via:'RESP'}],
+      components:[
+
+        {id:'api-chat',label:'POST /api/chat',one:'the streaming turn',
+          whatHowWhy:{what:'The endpoint that turns one user message into a streamed assistant reply.',
+            how:'Zod-parses the body, runs the BotID check and auth() together, throttles by IP (Redis) and by hourly message count (Postgres), rebuilds the whole conversation from Message_v2, then streamText() through the Gateway with five tools registered and a 5-step stop condition; the UI message stream is merged into a writer that also emits transient waiting-status and chat-title parts, and onEnd persists everything.',
+            why:'It is the only place the model, the tools, the history and the persistence meet, so ownership checks, entitlements and stream resumption all have to live here rather than in the client.'},
+          ports:{in:[{label:'POST { id, message, selectedChatModel, visibility } -> one chat turn',from:'components/chat/shell.tsx (useChat transport)'},
+                     {label:'session cookie -> user id + type',from:'app/(auth)/auth.ts'},
+                     {label:'Message_v2 rows -> prior conversation',from:'lib/db/queries.ts (Postgres)'},
+                     {label:'request IP + geo -> rate-limit key & prompt hints',from:'@vercel/functions'}],
+                 out:[{label:'model messages + tool defs -> completion',to:'Vercel AI Gateway (streamText)'},
+                      {label:'SSE UI message stream -> live reply in the browser',to:'Browser'},
+                      {label:'user + assistant messages -> Message_v2 rows',to:'PostgreSQL (saveMessages)'},
+                      {label:'SSE copy + stream id -> resumable playback',to:'Redis + Stream table'}]},
+          flow:[
+            {label:'Parse & validate body',fn:'postRequestBodySchema.parse()',file:'app/(chat)/api/chat/schema.ts',external:true,
+             in:'Raw JSON request body',does:'Zod-checks the chat id, the message parts (text / file parts capped at 5MB, jpeg|png|pdf), the model id and the visibility.',out:'PostRequestBody, or a 400 bad_request:api'},
+            {label:'Identify the caller',fn:'Promise.all([checkBotId(), auth()])',file:'app/(auth)/auth.ts',external:true,
+             in:'Headers + session cookie',does:'Runs the BotID classifier and the NextAuth session lookup in parallel; a bot gets 403, no session gets 401.',out:'Session { user.id, user.type }'},
+            {label:'Throttle',fn:'checkIpRateLimit() + getMessageCountByUserId()',file:'lib/ratelimit.ts',external:true,
+             in:'IP address + user id',does:'Two independent limits before any model spend.',out:'Passes, or 429 rate_limit:chat',
+             children:[
+               {label:'Per-IP window',fn:'redis.multi().incr().expire()',in:'ip-rate-limit:<ip>',does:'Atomic INCR with a 1h NX expiry; over 10 throws.',out:'count'},
+               {label:'Per-user quota',fn:'getMessageCountByUserId()',in:'user id + 1h window',does:'COUNT of the user messages in the last hour, compared to entitlementsByUserType.',out:'messageCount'},
+             ]},
+            {label:'Load or open the chat',fn:'getChatById() / saveChat()',file:'lib/db/queries.ts',external:true,
+             in:'Chat id + user id',does:'Existing chat: enforces chat.userId ownership (403 otherwise) and loads its messages. New chat: inserts it as "New chat" and kicks off title generation in the background.',out:'DBMessage[] + an optional titlePromise'},
+            {label:'Rebuild the conversation',fn:'convertToUIMessages()',file:'lib/utils.ts',external:true,
+             in:'DBMessage rows + the incoming message',does:'Maps rows back to UI messages; on the tool-approval path it instead replays stored messages with the approval / denial states patched onto the matching toolCallIds.',out:'ChatMessage[]'},
+            {label:'Persist the user turn',fn:'saveMessages()',file:'lib/db/queries.ts',external:true,
+             in:'The new user message',does:'Inserts it into Message_v2 before the model runs, so a failed generation never loses the prompt.',out:'Stored user message'},
+            {label:'Call the model',fn:'streamText()',file:'ai (AI SDK)',external:true,
+             in:'ChatMessage[] + request hints',does:'Builds the system prompt, resolves the language model through the Gateway and streams with five tools active and stopWhen(isStepCount(5)).',out:'Token / tool-call stream',
+             children:[
+               {label:'System prompt',fn:'systemPrompt({requestHints, supportsTools})',in:'city/country/lat/long from geolocation()',does:'Composes the persona, the artifact rules (only when the model supports tools) and the location hints.',out:'instructions string'},
+               {label:'Resolve model',fn:'getLanguageModel(chatModel)',in:'Validated model id',does:'gateway.languageModel(id) in production, the mock provider under PLAYWRIGHT.',out:'LanguageModel'},
+               {label:'Register tools',fn:'{ getWeather, createDocument, editDocument, updateDocument, requestSuggestions }',in:'session + dataStream writer',does:'Binds each tool to this request so it can write parts back to the client.',out:'Tool set'},
+               {label:'Waiting status',fn:'writeWaitingStatus()',in:'onChunk activity + a 9s timer',does:'Emits transient data-waiting-status parts, escalating to a Gateway health check if the model has not spoken.',out:'UI status parts'},
+             ]},
+            {label:'Stream to the client',fn:'dataStream.merge(toUIMessageStream())',branch:'success',
+             in:'Model stream',does:'Merges model output into the UI message stream, adding reasoning parts for reasoning models and a data-chat-title part once the title resolves.',out:'UI message parts -> browser'},
+            {label:'Map the failure',fn:'onError() / catch -> ChatbotError',branch:'error',file:'lib/errors.ts',
+             in:'Thrown error',does:'Recognises the Gateway "needs a credit card" message and returns actionable copy; anything else becomes a typed ChatbotError response.',out:'Error part or JSON error response'},
+            {label:'Persist the assistant turn',fn:'onEnd({ messages })',
+             in:'Finished messages from either branch',does:'Inserts the assistant messages, or updateMessage()s the existing rows when this was a tool-approval continuation.',out:'Stored Message_v2 rows'},
+            {label:'Return the response',fn:'createUIMessageStreamResponse()',
+             in:'UI message stream',does:'Returns the SSE response and, when REDIS_URL is set, tees a copy into a resumable stream keyed by a new Stream row.',out:'SSE 200 -> browser, stream id -> Redis'},
+          ],
+          anatomy:[
+            {section:'Imports',lines:'1-48',runsWhen:'at import',summary:'AI SDK stream helpers, BotID, resumable-stream, auth, entitlements, the model catalog, prompts, the five tools, the Drizzle queries and the request schema.'},
+            {section:'Route config + constants',lines:'50-52',runsWhen:'read by Next at build',summary:'export const maxDuration = 60 and the 9s HEALTH_CHECK_DELAY_MS.'},
+            {section:'Module-level helpers',lines:'54-68',runsWhen:'dormant until called',summary:'isModelStreamActivity() filters bookkeeping chunks; getStreamContext() builds (or nulls) the resumable-stream context.'},
+            {section:'Entry point: POST',lines:'70-445',runsWhen:'per chat turn',summary:'Validate, gate, throttle, rebuild history, streamText with tools, persist on end, map errors.'},
+            {section:'Entry point: DELETE',lines:'447-470',runsWhen:'per chat deletion',summary:'Auth + ownership check, then deleteChatById().'},
+          ],
+          summary:'The streaming chat turn: validate, gate, throttle, prompt, stream, persist.',
+          files:['app/(chat)/api/chat/route.ts','app/(chat)/api/chat/schema.ts','app/(chat)/api/chat/[id]/stream/route.ts'],
+          talksTo:[{to:'AI layer',via:'import'},{to:'PostgreSQL',via:'SQL'},{to:'Redis',via:'resumable stream'}],
+          net:'POST /api/chat -> text/event-stream, maxDuration 60'},
+
+        {id:'api-ratelimit',label:'Rate limiting',one:'Redis + entitlements',
+          whatHowWhy:{what:'Two throttles guarding model spend: a per-IP burst limit and a per-user hourly quota.',
+            how:'checkIpRateLimit() lazily opens one Redis client and runs INCR + EXPIRE(NX) in a MULTI on ip-rate-limit:<ip>, throwing ChatbotError("rate_limit:chat") past 10 in an hour. The quota side counts the user’s messages of the last hour in Postgres and compares it to entitlementsByUserType.',
+            why:'The IP limit stops an anonymous flood before auth even matters; the per-user quota is what makes guest accounts cheap to hand out. Both fail open (dev, no REDIS_URL, or a dead client) so a cache outage cannot take chat down.'},
+          ports:{in:[{label:'client IP -> burst key',from:'ipAddress(request) (@vercel/functions)'},
+                     {label:'user id + type -> hourly allowance',from:'POST /api/chat session'}],
+                 out:[{label:'INCR / EXPIRE ip-rate-limit:<ip> -> counter',to:'Redis'},
+                      {label:'COUNT(Message_v2) in the last hour -> usage',to:'PostgreSQL'},
+                      {label:'ChatbotError("rate_limit:chat") -> 429',to:'POST /api/chat'}]},
+          summary:'Per-IP Redis counter + per-user hourly entitlement.',
+          files:['lib/ratelimit.ts','lib/ai/entitlements.ts','lib/errors.ts'],
+          kids:[{label:'guest',txt:'10 messages / hour.'},{label:'regular',txt:'10 messages / hour.'},{label:'per IP',txt:'10 / hour, production only.'}],
+          talksTo:[{to:'Redis',via:'RESP'},{to:'PostgreSQL',via:'SQL'}]},
+
+        {id:'api-crud',label:'Chat CRUD routes',one:'history · votes · docs',
+          summary:'The non-streaming handlers, all of them auth() + ownership checked before touching Drizzle: paginated chat history, message paging, upvote/downvote, document versions (GET/POST/DELETE-after-timestamp) and artifact suggestions.',
+          files:['app/(chat)/api/history/route.ts','app/(chat)/api/messages/route.ts','app/(chat)/api/vote/route.ts','app/(chat)/api/document/route.ts','app/(chat)/api/suggestions/route.ts'],
+          kids:[{label:'GET/DELETE /api/history',txt:'Sidebar chat list; DELETE clears the account’s chats.'},{label:'GET /api/messages',txt:'Messages for one chat.'},{label:'GET/PATCH /api/vote',txt:'Per-message votes.'},{label:'GET/POST/DELETE /api/document',txt:'Artifact versions.'},{label:'GET /api/suggestions',txt:'Stored writing suggestions.'}],
+          talksTo:[{to:'PostgreSQL',via:'Drizzle'}]},
+
+        {id:'api-upload',label:'POST /api/files/upload',one:'attachments',
+          ports:{in:[{label:'multipart file -> attachment',from:'components/chat/multimodal-input.tsx'},
+                     {label:'session -> upload permission',from:'app/(auth)/auth.ts'}],
+                 out:[{label:'file bytes -> public blob',to:'Vercel Blob (put)'},
+                      {label:'{ url, pathname } -> message file part',to:'Browser'}]},
+          summary:'Validates the upload with zod (max 5MB, JPEG or PNG), sanitises the filename and put()s it to Vercel Blob with public access, returning the blob URL the client attaches to the message.',
+          files:['app/(chat)/api/files/upload/route.ts'],
+          talksTo:[{to:'Vercel Blob',via:'HTTPS'}]},
+
+        {id:'api-models',label:'GET /api/models',one:'model catalog',
+          summary:'Serves the curated capability map (tools / vision / reasoning), day-cached at the edge; in demo mode it merges in the full Gateway model list instead.',
+          files:['app/(chat)/api/models/route.ts'],
+          net:'Cache-Control: public, max-age=86400',
+          talksTo:[{to:'AI Gateway',via:'HTTPS'}]},
+
+        {id:'api-actions',label:'Server actions',one:'"use server"',
+          summary:'Out-of-band mutations the UI calls directly: title generation from the first user message, saving the model choice in a cookie, changing chat visibility, trimming messages after an edit, and requesting artifact suggestions.',
+          files:['app/(chat)/actions.ts','artifacts/actions.ts'],
+          talksTo:[{to:'AI layer',via:'generateText'},{to:'PostgreSQL',via:'Drizzle'}]},
+
+        {id:'api-db',label:'DB access layer',one:'Drizzle queries',
+          summary:'The only module that opens the Postgres connection (postgres-js + drizzle, "server-only"): every read and write in the app goes through these ~25 typed query functions, each wrapping failures in a typed ChatbotError.',
+          files:['lib/db/queries.ts','lib/db/utils.ts','lib/types.ts','lib/utils.ts','lib/errors.ts'],
+          talksTo:[{to:'PostgreSQL',via:'SQL'}]},
+      ]},
+
+    'c-ai':{label:'AI layer',tech:'AI SDK 7 · Vercel AI Gateway',layer:'backend',kind:'container',
+      net:'https://ai-gateway.vercel.sh (models, endpoints, completions)',
+      summary:'Everything model-facing: which models exist and what they can do, how the system prompt is built, the five tools the model may call, and the artifact handlers those tools drive.',
+      entry:['lib/ai/providers.ts'],
+      talksTo:[{to:'AI Gateway',via:'HTTPS'}],
+      components:[
+        {id:'ai-provider',label:'Provider',one:'gateway binding',
+          summary:'Resolves a model id to a LanguageModel: gateway.languageModel(id) normally, and a customProvider of mock models when PLAYWRIGHT is set so the e2e suite never spends tokens.',
+          files:['lib/ai/providers.ts','lib/ai/models.mock.ts','lib/constants.ts'],
+          talksTo:[{to:'AI Gateway',via:'HTTPS'}]},
+        {id:'ai-models',label:'Model catalog',one:'ids + capabilities',
+          summary:'The curated model list (DeepSeek V3.2, Kimi K2.5, GPT-OSS 20B/120B, Grok 4.1 Fast and friends) with per-model gateway provider ordering and reasoning effort, plus cached fetches of the Gateway /v1/models and /endpoints APIs for capability and health lookups.',
+          files:['lib/ai/models.ts','lib/ai/models.test.ts'],
+          kids:[{label:'chatModels',txt:'Curated ids, provider order, reasoning effort.'},{label:'getCapabilities()',txt:'tools / vision / reasoning per model, cached.'},{label:'getModelAvailability()',txt:'"impacted" health check behind the waiting status.'}],
+          talksTo:[{to:'AI Gateway',via:'HTTPS'}],
+          net:'GET https://ai-gateway.vercel.sh/v1/models[/{id}/endpoints]'},
+        {id:'ai-prompts',label:'Prompts',one:'system instructions',
+          summary:'Composes the system prompt from a persona, the geolocation hints and the artifact rules (appended only when the model supports tools), plus the dedicated prompts for title generation, code, sheets and document updates.',
+          files:['lib/ai/prompts.ts']},
+        {id:'ai-tools',label:'Tools',one:'model-callable functions',
+          whatHowWhy:{what:'The five functions the model can call mid-stream.',
+            how:'Each is an AI SDK tool() with a zod inputSchema, closed over this request’s session and dataStream writer; createDocument / updateDocument / editDocument / requestSuggestions write data-* parts as they work so the artifact canvas fills in live, while getWeather is a pure fetch to Open-Meteo.',
+            why:'Streaming the side effects (kind, id, title, deltas) rather than only returning a result is what makes artifacts appear to be written in real time instead of arriving as one block.'},
+          ports:{in:[{label:'tool call args (zod-validated) -> what to do',from:'streamText() in app/(chat)/api/chat/route.ts'},
+                     {label:'session + dataStream writer -> identity & output channel',from:'POST /api/chat'},
+                     {label:'existing Document row -> current content',from:'lib/db/queries.ts'}],
+                 out:[{label:'data-kind / data-id / data-title / deltas -> live artifact UI',to:'Browser (UI message stream)'},
+                      {label:'generated content -> Document / Suggestion rows',to:'PostgreSQL (saveDocument)'},
+                      {label:'GET /v1/forecast -> weather JSON',to:'Open-Meteo'},
+                      {label:'tool result -> next model step',to:'streamText()'}]},
+          summary:'getWeather, createDocument, updateDocument, editDocument, requestSuggestions.',
+          files:['lib/ai/tools/get-weather.ts','lib/ai/tools/create-document.ts','lib/ai/tools/update-document.ts','lib/ai/tools/edit-document.ts','lib/ai/tools/request-suggestions.ts'],
+          kids:[{label:'getWeather',txt:'Geocodes a city then reads Open-Meteo forecast.'},{label:'createDocument',txt:'Opens an artifact and streams its first draft.'},{label:'updateDocument',txt:'Rewrites an artifact from a description.'},{label:'editDocument',txt:'Targeted edit of an existing artifact.'},{label:'requestSuggestions',txt:'Generates inline writing suggestions.'}],
+          talksTo:[{to:'Open-Meteo',via:'HTTPS'},{to:'PostgreSQL',via:'SQL'}]},
+        {id:'ai-artifacts',label:'Artifact handlers',one:'server-side generation',
+          summary:'The server half of each artifact kind: createDocumentHandler() wraps a kind’s generation callbacks, streams deltas to the client and saves the finished content as a new Document version. text, code and sheet are registered; the image kind ships client-side only.',
+          files:['lib/artifacts/server.ts','artifacts/text/server.ts','artifacts/code/server.ts','artifacts/sheet/server.ts'],
+          kids:[{label:'text',txt:'streamText markdown into the ProseMirror doc.'},{label:'code',txt:'Generates a Python snippet (schema-constrained).'},{label:'sheet',txt:'Generates CSV for the data grid.'}],
+          talksTo:[{to:'AI Gateway',via:'HTTPS'},{to:'PostgreSQL',via:'SQL'}]},
+      ]},
+
+    'c-postgres':{label:'PostgreSQL',tech:'Drizzle ORM · postgres-js',layer:'data',kind:'container',
+      net:'POSTGRES_URL (Neon per vercel-template.json) · TLS',
+      summary:'The system of record: users, chats, messages, votes, artifact documents and their suggestions, plus the stream ids that make a reply resumable. Reached only through lib/db/queries.ts.',
+      entry:['lib/db/schema.ts'],
+      components:[
+        {id:'db-schema',label:'Schema & migrations',one:'drizzle definitions',
+          whatHowWhy:{what:'The seven pgTable definitions the whole app types itself against.',
+            how:'Plain Drizzle table objects with uuid primary keys, composite keys on Vote/Document/Suggestion, and InferSelectModel type exports; drizzle-kit generates SQL into lib/db/migrations and lib/db/migrate.ts applies it as the first half of the build script.',
+            why:'One typed schema is the contract shared by the queries, the route handlers and the client message types — a column change surfaces as a TypeScript error rather than a runtime one.'},
+          anatomy:[
+            {section:'Imports',lines:'1-12',runsWhen:'at import',summary:'InferSelectModel plus the pg-core column and constraint builders.'},
+            {section:'User',lines:'14-26',runsWhen:'once at import',summary:'Identity: email, optional bcrypt hash, isAnonymous for guests; exports type User.'},
+            {section:'Chat + Message_v2',lines:'28-53',runsWhen:'once at import',summary:'Chat (title, userId FK, public|private visibility) and Message_v2 (role + JSON parts + JSON attachments).'},
+            {section:'Vote_v2',lines:'55-71',runsWhen:'once at import',summary:'isUpvoted keyed by the composite (chatId, messageId).'},
+            {section:'Document + Suggestion',lines:'73-118',runsWhen:'once at import',summary:'Versioned artifacts keyed by (id, createdAt) with kind text|code|image|sheet, and suggestions foreign-keyed to that composite.'},
+            {section:'Stream',lines:'120-136',runsWhen:'once at import',summary:'Stream ids per chat, written when a resumable SSE stream starts.'},
+          ],
+          summary:'Seven tables + the generated migration.',
+          files:['lib/db/schema.ts','lib/db/migrate.ts','lib/db/migrations/0000_initial.sql','drizzle.config.ts']},
+        {id:'db-user',label:'User',one:'identity',summary:'Regular and guest users; guests are rows with isAnonymous and a random hashed password.',files:['lib/db/schema.ts']},
+        {id:'db-chat',label:'Chat',one:'conversations',summary:'Owner, title and public/private visibility — the ownership check every route runs.',files:['lib/db/schema.ts']},
+        {id:'db-message',label:'Message_v2',one:'message parts',summary:'Role plus the JSON parts array (text, reasoning, tool calls, files) the UI renders back.',files:['lib/db/schema.ts']},
+        {id:'db-vote',label:'Vote_v2',one:'feedback',summary:'Up/down vote per (chat, message).',files:['lib/db/schema.ts']},
+        {id:'db-doc',label:'Document',one:'artifact versions',summary:'Each save is a new (id, createdAt) row, which is what powers version history and diffing.',files:['lib/db/schema.ts']},
+        {id:'db-sug',label:'Suggestion',one:'inline edits',summary:'Original vs suggested text against one document version, resolvable in the editor.',files:['lib/db/schema.ts']},
+        {id:'db-stream',label:'Stream',one:'resumable ids',summary:'One row per SSE stream so a dropped client can resume the reply.',files:['lib/db/schema.ts']},
+      ]},
+
+    'n-redis':{label:'Redis',tech:'Cache · streams',layer:'data',kind:'node',
+      net:'REDIS_URL (Upstash per vercel-template.json)',
+      summary:'Two jobs, both optional: the ip-rate-limit:<ip> counters, and the resumable-stream backing store that lets a client reconnect to an in-flight reply. With no REDIS_URL both quietly no-op.',
+      files:['lib/ratelimit.ts','app/(chat)/api/chat/route.ts'],
+      talksTo:[{to:'API routes',via:'RESP'}]},
+
+    'n-blob':{label:'Vercel Blob',tech:'Object storage',layer:'data',kind:'node',
+      net:'*.public.blob.vercel-storage.com : 443 (BLOB_READ_WRITE_TOKEN)',
+      summary:'Public store for chat attachments. The upload route put()s the file and the returned URL is embedded in the message part, so images are served straight from the blob host (allow-listed in next.config.ts images.remotePatterns).',
+      files:['app/(chat)/api/files/upload/route.ts','next.config.ts']},
+
+    'c-external':{label:'External services',tech:'3rd-party HTTPS',layer:'external',kind:'container',
+      net:'HTTPS : 443',
+      summary:'Everything the app calls off-box: the AI Gateway for every model, Open-Meteo for the weather tool, BotID for abuse detection, and the CDN/telemetry endpoints the browser touches.',
+      components:[
+        {id:'x-gateway',label:'Vercel AI Gateway',one:'all model traffic',
+          summary:'Single upstream for completions and for the model/endpoint metadata. Auth is AI_GATEWAY_API_KEY, or Vercel OIDC when deployed; per-model gatewayOrder picks the provider order (bedrock, fireworks, groq, xai, deepinfra).',
+          files:['lib/ai/providers.ts','lib/ai/models.ts'],
+          net:'https://ai-gateway.vercel.sh/v1/*'},
+        {id:'x-meteo',label:'Open-Meteo',one:'weather data',
+          summary:'Two unauthenticated endpoints behind the getWeather tool: the geocoding search to turn a city into coordinates, then the forecast for current temperature, hourly series and sunrise/sunset.',
+          files:['lib/ai/tools/get-weather.ts'],
+          net:'geocoding-api.open-meteo.com, api.open-meteo.com'},
+        {id:'x-botid',label:'BotID',one:'abuse detection',
+          summary:'Vercel BotID: initBotId() on the client declares POST /api/chat as protected, next.config.ts is wrapped in withBotId(), and the route calls checkBotId() server-side and 403s a classified bot.',
+          files:['instrumentation-client.ts','next.config.ts','app/(chat)/api/chat/route.ts']},
+        {id:'x-otel',label:'Telemetry',one:'OTel + Analytics',
+          summary:'registerOTel({serviceName:"chatbot"}) plus the AI SDK OpenTelemetry bridge, so streamText spans are exported in production; @vercel/analytics is a dependency alongside it.',
+          files:['instrumentation.ts','app/(chat)/api/chat/route.ts']},
+        {id:'x-cdn',label:'Browser CDNs',one:'pyodide · avatars · fonts',
+          summary:'Loaded directly by the browser, not the server: Pyodide from jsDelivr (lazyOnload) to run generated Python in the code artifact console, avatar.vercel.sh for user avatars, and next/font/google for Geist.',
+          files:['app/(chat)/layout.tsx','next.config.ts','app/layout.tsx'],
+          net:'cdn.jsdelivr.net/pyodide, avatar.vercel.sh'},
+      ]},
+
+    'c-tooling':{label:'Dev & CI',tech:'Playwright · Biome · Drizzle Kit',layer:'infra',kind:'container',
+      net:'CI on GitHub Actions; migrations run against POSTGRES_URL at build',
+      summary:'Not part of the running app: the e2e suite, the lint/format gate and the schema tooling. The one runtime touchpoint is the build script, which applies migrations before next build.',
+      entry:['playwright.config.ts'],
+      talksTo:[{to:'PostgreSQL',via:'migrations'}],
+      components:[
+        {id:'t-e2e',label:'Playwright suite',one:'e2e tests',
+          summary:'Chat, auth, model-selector and API specs driven through page objects, run against the mock AI provider (PLAYWRIGHT=True) so no real model is called; reasoning tests use recorded prompt fixtures.',
+          files:['tests/e2e/chat.test.ts','tests/e2e/auth.test.ts','tests/e2e/api.test.ts','tests/pages/chat.ts','tests/fixtures.ts','playwright.config.ts']},
+        {id:'t-ci',label:'GitHub Actions',one:'CI workflows',
+          summary:'Two workflows: the Playwright run and the lint/format check.',
+          files:['.github/workflows/playwright.yml','.github/workflows/lint.yml']},
+        {id:'t-db',label:'Drizzle Kit',one:'schema tooling',
+          summary:'generate / migrate / push / studio scripts against lib/db/schema.ts, with dotenv loading .env.local; migrate.ts also runs as the first half of pnpm build.',
+          files:['drizzle.config.ts','lib/db/migrate.ts','lib/db/migrations/meta/_journal.json','package.json'],
+          talksTo:[{to:'PostgreSQL',via:'SQL DDL'}]},
+        {id:'t-lint',label:'Biome / Ultracite',one:'lint + format',
+          summary:'Ultracite over Biome as the single formatter/linter, enforced on commit by husky + lint-staged, with the same rules mirrored into the editor configs.',
+          files:['biome.jsonc','.husky/','.vscode/','.cursor/rules/ultracite.mdc']},
+        {id:'t-build',label:'Build config',one:'Next · TS · Tailwind',
+          summary:'next.config.ts (React Compiler, cacheComponents, inline CSS, image allow-lists, optional /demo basePath) plus tsconfig, PostCSS/Tailwind 4 and the Vercel project files.',
+          files:['next.config.ts','tsconfig.json','postcss.config.mjs','vercel.json','vercel-template.json','.env.example']},
+      ]},
+  },
+  edges:[
+    {from:'n-browser',to:'c-edge',label:'HTTPS',net:'443'},
+    {from:'c-edge',to:'c-frontend',label:'next()',net:'same origin'},
+    {from:'c-frontend',to:'c-api',label:'fetch / SSE',net:'/api/* : 443'},
+    {from:'c-frontend',to:'c-auth',label:'session',net:'/api/auth/*'},
+    {from:'c-api',to:'c-auth',label:'auth()',net:'JWT cookie'},
+    {from:'c-api',to:'c-ai',label:'import',net:'in-process'},
+    {from:'c-api',to:'c-postgres',label:'SQL',net:'POSTGRES_URL (TLS)'},
+    {from:'c-api',to:'n-redis',label:'RESP',net:'REDIS_URL'},
+    {from:'c-api',to:'n-blob',label:'put()',net:'443'},
+    {from:'c-auth',to:'c-postgres',label:'SQL',net:'POSTGRES_URL (TLS)'},
+    {from:'c-ai',to:'c-external',label:'HTTPS',net:'443'},
+    {from:'c-ai',to:'c-postgres',label:'documents',net:'POSTGRES_URL (TLS)'},
+    {from:'n-browser',to:'c-external',label:'CDN / fonts / BotID',net:'443'},
+    {from:'c-tooling',to:'c-postgres',label:'migrations',net:'POSTGRES_URL'},
+  ],
+};
+
+/* ============================================================
+   ENGINE — do not edit when filling a map (only the MODEL above).
+   ============================================================ */
+const $=id=>document.getElementById(id);
+const diagram=$('diagram'),canvas=$('canvas'),svg=$('edges'),labelLayer=$('edge-labels'),rowsEl=$('rows');
+const SVGNS='http://www.w3.org/2000/svg';
+let zoom=1, netMode=false;
+const lv=l=>`--layer:var(--l-${l});--layer-soft:var(--l-${l}-soft)`;
+
+$('legend').innerHTML = MODEL.legend.map(([l,name])=>
+  `<span class="lg"><span class="sw" style="background:var(--l-${l}-soft);border-color:var(--l-${l})"></span>${name}</span>`).join('')
+  + `<span class="eh"><svg viewBox="0 0 32 12"><line x1="0" y1="6" x2="26" y2="6" stroke="var(--edge)" stroke-width="2"/><path d="M26 2 L32 6 L26 10 Z" fill="var(--edge)"/></svg>calls / data flow</span>`
+  + `<span class="tip-hint">· click a card or pill to expand it in place · open its data flow / code anatomy · toggle network details above</span>`;
+
+/* Topbar text comes from MODEL — no {{placeholders}} to hand-edit. */
+document.title = MODEL.repo + ' — Architecture Map';
+$('wm-brand').textContent = MODEL.brand || MODEL.repo;
+$('wm-title').textContent = MODEL.repo;
+$('wm-meta').textContent = 'Architecture map · ' + (MODEL.date || new Date().toISOString().slice(0,10));
+
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function renderDiagram(){
+  rowsEl.innerHTML='';
+  for(const rowIds of MODEL.layout){
+    const row=document.createElement('div'); row.className='tier-row';
+    for(const id of rowIds){
+      const n=MODEL.nodes[id]; if(!n) continue;
+      const el=document.createElement('div'); el.id=id; el.setAttribute('style',lv(n.layer));
+      const netLine=n.net?`<div class="netline">${esc(n.net)}</div>`:'';
+      if(n.kind==='node'){
+        el.className='node';
+        el.innerHTML=`<div class="nhead"><div class="nt">${esc(n.label)}</div><div class="ns">${esc(n.tech)}</div></div>${netLine}<div class="inline" data-inline="${id}"></div>`;
+      }else{
+        el.className='container';
+        const entryLine=(n.entry&&n.entry[0])?`<div class="centry" title="${esc(n.entry[0])}">${pathHtml(n.entry[0])}</div>`:'';
+        el.innerHTML=`<div class="chead" data-cid="${id}">
+            <div class="ct"><span class="ctitle">${esc(n.label)}</span><span class="ctag">${esc(n.layer)}</span><span class="caret" data-collapse="${id}">▼</span></div>
+            <span class="ctech">${esc(n.tech)}</span>${entryLine}${netLine}</div>
+          <div class="comps">${(n.components||[]).map(cm=>`<div class="pill" data-cid="${id}" data-comp="${cm.id}">${esc(cm.label)}</div>`).join('')}</div>
+          <div class="inline" data-inline="${id}"></div>`;
+      }
+      row.appendChild(el);
+    }
+    rowsEl.appendChild(row);
+  }
+  applyNetLines();
+}
+/* a path renders with its directory prefix dim and the last 1–2 segments prominent;
+   it WRAPS (see .fl .path) so a long path can never bleed out of a card. */
+function pathHtml(p){
+  const parts=String(p||'').split('/'); const keep=parts.length>2?2:parts.length;
+  const head=parts.slice(0,parts.length-keep).join('/'), tail=parts.slice(parts.length-keep).join('/');
+  return (head?`<span class="pdim">${esc(head)}/</span>`:'')+`<span class="pend">${esc(tail)}</span>`;
+}
+function fileChip(f){return `<div class="fl"><span class="path" title="${esc(f)}">${pathHtml(f)}</span><button class="cp" data-copy="${esc(f)}">copy</button></div>`}
+function filesHtml(files){return `<div class="dlabel">Files</div><div class="files">`+files.map(fileChip).join('')+`</div>`}
+function whwHtml(w){return `<div class="whw">`
+  +(w.what?`<div><b>What</b>${esc(w.what)}</div>`:'')
+  +(w.how?`<div><b>How</b>${esc(w.how)}</div>`:'')
+  +(w.why?`<div><b>Why</b>${esc(w.why)}</div>`:'')+`</div>`}
+function portsHtml(p){
+  const col=(items,cls)=>`<div class="pcol ${cls}"><div class="phead">${cls==='in'?'Inputs':'Outputs'}</div>`
+    +(items||[]).map(x=>`<div class="port"><span class="pdot"></span>${esc(x.label)}`
+      +((x.from||x.to)?`<em>${cls==='in'?'from ':'to '}${esc(x.from||x.to)}</em>`:'')+`</div>`).join('')+`</div>`;
+  return `<div class="dlabel">Ports</div><div class="ports">${col(p.in,'in')}${col(p.out,'out')}</div>`;
+}
+function kidsHtml(kids){return `<div class="dlabel">Inside</div><div class="kids">`+kids.map(k=>`<div class="kid"><b>${esc(k.label)}</b><span>${esc(k.txt)}</span></div>`).join('')+`</div>`}
+function talksHtml(t){return `<div class="dlabel">Talks to</div><div class="talks">`+t.map(x=>`<span class="talk"><b>${esc(x.to)}</b> · ${esc(x.via)}</span>`).join('')+`</div>`}
+function detailBody(d,cid,key){
+  const btns=[];
+  if(d.flow)btns.push(`<button class="flowbtn" data-drawer="flow" data-dcid="${cid}" data-dkey="${key}">◧ Data flow</button>`);
+  if(d.anatomy)btns.push(`<button class="flowbtn" data-drawer="anatomy" data-dcid="${cid}" data-dkey="${key}">◫ Code anatomy</button>`);
+  return (d.whatHowWhy?whwHtml(d.whatHowWhy):(d.summary?`<div class="d2">${esc(d.summary)}</div>`:''))
+    + (d.ports?portsHtml(d.ports):'')
+    + (btns.length?`<div class="drawerbtns">${btns.join('')}</div>`:'')
+    + (d.entry?`<div class="dlabel">Entry point</div><div class="files">`+d.entry.map(fileChip).join('')+`</div>`:'')
+    + (d.files?filesHtml(d.files):'')
+    + (d.kids?kidsHtml(d.kids):'')
+    + (d.talksTo?talksHtml(d.talksTo):'')
+    + (d.net?`<div class="dlabel">Networking</div><div class="netline show">${esc(d.net)}</div>`:'');
+}
+function toggleInline(cid,key){
+  const host=document.querySelector(`.inline[data-inline="${cid}"]`);
+  const existing=host.querySelector(`.idrow[data-c="${key}"]`);
+  const pill=document.querySelector(`.pill[data-cid="${cid}"][data-comp="${key}"]`);
+  if(existing){existing.remove(); if(pill)pill.classList.remove('active');}
+  else{
+    const n=MODEL.nodes[cid];
+    const d=key==='__overview__'?{summary:n.summary,entry:n.entry,files:n.files,talksTo:n.talksTo}:n.components.find(x=>x.id===key);
+    const title=key==='__overview__'?n.label+' — overview':d.label;
+    const div=document.createElement('div'); div.className='idrow'; div.dataset.c=key;
+    div.innerHTML=`<div class="idrow-h"><span class="dot"></span>${esc(title)}<span class="idrow-x">×</span></div>`+detailBody(d,cid,key);
+    host.appendChild(div); if(pill)pill.classList.add('active');
+  }
+  host.closest('.container,.node').classList.toggle('expanded', host.children.length>0);
+  drawEdges();
+}
+/* ---- Data-flow / anatomy drawer (slides in from the left, scrollable) ---------------- */
+const drawer=$('drawer'),scrim=$('scrim');
+let dwState=null;                                   // {cid,key,tab}
+function stepHtml(s,sub){
+  const ext=s.external?' ext':'';
+  return `<div class="fnode${sub?' sub':''}${ext}">
+      <div class="fn-h"><span class="fn-l">${esc(s.label)}</span>${s.fn?`<span class="fn-f">${esc(s.fn)}</span>`:''}</div>
+      ${s.file?`<span class="fn-src" title="${esc(s.file)}">${s.external?'imported from ':''}${pathHtml(s.file)}</span>`:''}
+      <div class="fn-io">
+        ${s.in?`<div><b>In</b>${esc(s.in)}</div>`:''}
+        ${s.does?`<div><b>Does</b>${esc(s.does)}</div>`:''}
+        ${s.out?`<div><b>Out</b>${esc(s.out)}</div>`:''}
+      </div>
+      ${(s.children&&s.children.length)?`<div class="subs"><div class="subs-h">Calls, in order</div>`
+        +s.children.map((c,i)=>(i?`<div class="fconn"></div>`:'')+stepHtml(c,true)).join('')+`</div>`:''}
+    </div>`;
+}
+/* consecutive steps carrying `branch` become side-by-side lanes that re-merge afterwards */
+function flowHtml(flow,ports){
+  if(!flow.length)return '';
+  const groups=[];
+  for(const s of flow){
+    const last=groups[groups.length-1];
+    if(s.branch){ if(last&&last.par){last.steps.push(s);} else groups.push({par:true,steps:[s]}); }
+    else groups.push({par:false,steps:[s]});
+  }
+  const blocks=groups.map(g=>{
+    if(!g.par)return stepHtml(g.steps[0],false);
+    const lanes={}; const order=[];
+    for(const s of g.steps){ if(!lanes[s.branch]){lanes[s.branch]=[];order.push(s.branch);} lanes[s.branch].push(s); }
+    return `<div class="branches">`+order.map(name=>`<div class="blane"><div class="bname">${esc(name)}</div>`
+      +lanes[name].map((s,i)=>(i?`<div class="fconn"></div>`:'')+stepHtml(s,false)).join('')+`</div>`).join('')+`</div>`;
+  });
+  /* the lane is capped: what enters at the TOP, what leaves at the BOTTOM */
+  const inCap=(ports&&ports.in||[]).map(p=>p.label).join(' · ')||flow[0].in||'';
+  const outCap=(ports&&ports.out||[]).map(p=>p.label).join(' · ')||flow[flow.length-1].out||'';
+  const caps=[]; if(inCap)caps.push(`<div class="fcap">▼ IN &nbsp;${esc(inCap)}</div>`,`<div class="fconn"></div>`);
+  const tail=outCap?[`<div class="fconn"></div>`,`<div class="fcap">▲ OUT &nbsp;${esc(outCap)}</div>`]:[];
+  return `<div class="lane">`+caps.join('')+blocks.map((b,i)=>(i?`<div class="fconn"></div>`:'')+b).join('')+tail.join('')+`</div>`;
+}
+function anatomyHtml(a){
+  return `<div class="anat">`+a.map(s=>`<div class="asec">
+      <div class="a-h"><span class="a-n">${esc(s.section)}</span>${s.lines?`<span class="a-l">lines ${esc(s.lines)}</span>`:''}${s.runsWhen?`<span class="a-w">${esc(s.runsWhen)}</span>`:''}</div>
+      ${s.summary?`<div class="a-s">${esc(s.summary)}</div>`:''}</div>`).join('')+`</div>`;
+}
+function dwData(){const n=MODEL.nodes[dwState.cid];
+  return {n, d:(n.components||[]).find(x=>x.id===dwState.key)||{}};}
+function renderDrawer(){
+  if(!dwState)return;
+  const {n,d}=dwData();
+  drawer.setAttribute('style',lv(n.layer));
+  $('dw-title').textContent=d.label||n.label;
+  const src=(d.files&&d.files[0])||(n.entry&&n.entry[0])||'';
+  $('dw-sub').innerHTML=src?pathHtml(src):'';
+  const tabs=[]; if(d.flow)tabs.push(['flow','Data flow']); if(d.anatomy)tabs.push(['anatomy','Code anatomy']);
+  if(!tabs.some(t=>t[0]===dwState.tab))dwState.tab=tabs.length?tabs[0][0]:'flow';
+  $('dw-tabs').innerHTML=tabs.map(([k,label])=>`<button class="dwtab${k===dwState.tab?' on':''}" data-dwtab="${k}">${label}</button>`).join('');
+  $('dw-body').innerHTML=dwState.tab==='anatomy'?anatomyHtml(d.anatomy||[]):flowHtml(d.flow||[],d.ports);
+  $('dw-body').scrollTop=0;
+}
+function openDrawer(cid,key,tab){dwState={cid,key,tab};renderDrawer();
+  drawer.classList.add('open');scrim.classList.add('open');drawer.setAttribute('aria-hidden','false');}
+function closeDrawer(){drawer.classList.remove('open');scrim.classList.remove('open');drawer.setAttribute('aria-hidden','true');}
+scrim.addEventListener('click',closeDrawer);
+$('dw-x').addEventListener('click',closeDrawer);
+addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+drawer.addEventListener('click',e=>{const t=e.target.closest('[data-dwtab]');
+  if(t){dwState.tab=t.dataset.dwtab;renderDrawer();}});
+
+/* arrows: getBoundingClientRect, recomputed on every layout change (expand/zoom/resize) */
+function relRect(el){const r=el.getBoundingClientRect(),b=diagram.getBoundingClientRect();
+  return {left:(r.left-b.left)/zoom,top:(r.top-b.top)/zoom,right:(r.right-b.left)/zoom,bottom:(r.bottom-b.top)/zoom,
+    cx:(r.left-b.left)/zoom+r.width/zoom/2,cy:(r.top-b.top)/zoom+r.height/zoom/2}}
+/* Tier-aware: boxes in DIFFERENT rows (vertical ranges don't overlap) route vertically —
+   exit top/bottom, cross in the empty gutter between rows. Same-row boxes route horizontally.
+   This keeps the cross-travel in a card-free gutter, so a line never cuts through a box. */
+function anchors(a,b){let p1,p2,axis;
+  const sameRow = a.top < b.bottom && b.top < a.bottom;
+  if(!sameRow){axis='v';
+    if(b.cy>=a.cy){p1={x:a.cx,y:a.bottom};p2={x:b.cx,y:b.top};}
+    else{p1={x:a.cx,y:a.top};p2={x:b.cx,y:b.bottom};}}
+  else{axis='h';
+    if(b.cx>=a.cx){p1={x:a.right,y:a.cy};p2={x:b.left,y:b.cy};}
+    else{p1={x:a.left,y:a.cy};p2={x:b.right,y:b.cy};}}
+  return {p1,p2,axis}}
+/* Orthogonal (Manhattan) routing: the cross-travel runs in the gutter BETWEEN the two
+   boxes' facing edges. For the tier-row layout that gutter is empty, so a line never
+   crosses a card. Aligned boxes collapse to a straight segment. Corners are sharp —
+   simplest path that's provably correct; drag a card if a skip-row edge ever clips one.
+   ponytail: sharp 3-segment; add A-star / obstacle-routing only if skip-row maps overlap in practice. */
+function bezier(p1,p2,axis){
+  if(axis==='v'){const my=(p1.y+p2.y)/2;return `M${p1.x},${p1.y} L${p1.x},${my} L${p2.x},${my} L${p2.x},${p2.y}`}
+  const mx=(p1.x+p2.x)/2;return `M${p1.x},${p1.y} L${mx},${p1.y} L${mx},${p2.y} L${p2.x},${p2.y}`}
+function drawEdges(){
+  [...svg.querySelectorAll('path.edge')].forEach(p=>p.remove()); labelLayer.innerHTML='';
+  svg.setAttribute('width',diagram.scrollWidth); svg.setAttribute('height',diagram.scrollHeight);
+  for(const e of MODEL.edges){
+    const A=$(e.from),B=$(e.to); if(!A||!B) continue;
+    const {p1,p2,axis}=anchors(relRect(A),relRect(B));
+    const path=document.createElementNS(SVGNS,'path');
+    path.setAttribute('class','edge'); path.setAttribute('d',bezier(p1,p2,axis));
+    path.setAttribute('fill','none'); path.setAttribute('stroke','var(--edge)'); path.setAttribute('stroke-width','2');
+    path.setAttribute('marker-end','url(#arrow)'); svg.appendChild(path);
+    const lab=document.createElement('div'); const showNet=netMode&&e.net;
+    lab.className='edge-label'+(showNet?' net':''); lab.textContent=showNet?e.net:e.label;
+    lab.style.left=((p1.x+p2.x)/2)+'px'; lab.style.top=((p1.y+p2.y)/2)+'px'; labelLayer.appendChild(lab);
+  }
+}
+function applyNetLines(){document.querySelectorAll('.netline').forEach(n=>n.classList.toggle('show',netMode))}
+$('net').addEventListener('change',e=>{netMode=e.target.checked;applyNetLines();drawEdges();});
+function applyZoom(z){zoom=Math.max(.3,Math.min(2,z));diagram.style.transform='scale('+zoom+')';$('z-pct').textContent=Math.round(zoom*100)+'%';drawEdges();}
+function fit(){diagram.style.transform='scale(1)';zoom=1;applyZoom(Math.min(1,(canvas.clientWidth-40)/diagram.scrollWidth));}
+$('z-in').onclick=()=>applyZoom(zoom+0.1);$('z-out').onclick=()=>applyZoom(zoom-0.1);$('z-fit').onclick=fit;
+canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();
+  const vx=e.clientX-r.left,vy=e.clientY-r.top,sx=vx+canvas.scrollLeft,sy=vy+canvas.scrollTop,prev=zoom;
+  applyZoom(zoom*(e.deltaY<0?1.1:1/1.1));const k=zoom/prev;canvas.scrollLeft=sx*k-vx;canvas.scrollTop=sy*k-vy;},{passive:false});
+let panning=false,pX,pY,pL,pT;
+canvas.addEventListener('mousedown',e=>{if(e.button!==0)return;panning=true;pX=e.clientX;pY=e.clientY;pL=canvas.scrollLeft;pT=canvas.scrollTop;canvas.classList.add('grabbing');});
+addEventListener('mousemove',e=>{if(!panning)return;canvas.scrollLeft=pL-(e.clientX-pX);canvas.scrollTop=pT-(e.clientY-pY);});
+addEventListener('mouseup',()=>{panning=false;canvas.classList.remove('grabbing');});
+/* Drag a card to nudge spacing. Offset is a CSS translate on the card; getBoundingClientRect
+   already includes it, so drawEdges() re-routes around the new position. Starting a drag on a
+   card stops the canvas pan; a real move swallows the trailing click so it doesn't drill in. */
+const offsets={};let dCard=null,dSX,dSY,dOX,dOY,dMoved;
+diagram.addEventListener('mousedown',e=>{
+  if(e.button!==0)return;
+  if(e.target.closest('.pill,.cp,[data-collapse],.idrow,.idrow-x'))return;
+  const card=e.target.closest('.container,.node'); if(!card)return;
+  e.stopPropagation();                       // don't let canvas start panning
+  dCard=card;const o=offsets[card.id]||{x:0,y:0};dOX=o.x;dOY=o.y;dSX=e.clientX;dSY=e.clientY;dMoved=false;
+  card.classList.add('dragging');
+});
+addEventListener('mousemove',e=>{
+  if(!dCard)return;
+  if(Math.abs(e.clientX-dSX)+Math.abs(e.clientY-dSY)>4)dMoved=true;
+  const o={x:dOX+(e.clientX-dSX)/zoom,y:dOY+(e.clientY-dSY)/zoom};offsets[dCard.id]=o;
+  dCard.style.transform=`translate(${o.x}px,${o.y}px)`;drawEdges();
+});
+addEventListener('mouseup',()=>{
+  if(!dCard)return;dCard.classList.remove('dragging');
+  if(dMoved){const swallow=ev=>{ev.stopPropagation();removeEventListener('click',swallow,true)};addEventListener('click',swallow,true);}
+  dCard=null;
+});
+const toast=$('toast');let toastT;
+function flash(m){toast.textContent=m;toast.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>toast.classList.remove('show'),1200);}
+document.addEventListener('click',e=>{
+  const cp=e.target.closest('.cp');
+  if(cp){navigator.clipboard?.writeText(cp.dataset.copy).then(()=>flash('Copied  '+cp.dataset.copy)).catch(()=>flash('Copy failed'));return;}
+  const db=e.target.closest('[data-drawer]');
+  if(db){e.stopPropagation();openDrawer(db.dataset.dcid,db.dataset.dkey,db.dataset.drawer);return;}
+  const col=e.target.closest('[data-collapse]');
+  if(col){e.stopPropagation();col.closest('.container').classList.toggle('collapsed');drawEdges();return;}
+  const x=e.target.closest('.idrow-x');
+  if(x){const r=x.closest('.idrow');toggleInline(r.closest('.inline').dataset.inline,r.dataset.c);return;}
+  const pill=e.target.closest('.pill');
+  if(pill){toggleInline(pill.dataset.cid,pill.dataset.comp);return;}
+  const node=e.target.closest('.node');
+  if(node){toggleInline(node.id,'__overview__');return;}
+  const head=e.target.closest('.chead');
+  if(head){toggleInline(head.dataset.cid,'__overview__');return;}
+});
+renderDiagram();
+addEventListener('resize',drawEdges);
+addEventListener('load',()=>requestAnimationFrame(()=>{drawEdges();fit();}));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawEdges);
+requestAnimationFrame(drawEdges);
+</script>
+</body>
+</html>

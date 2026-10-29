@@ -81,7 +81,7 @@ body{font-family:var(--font);background:var(--canvas-bg);color:var(--ink);overfl
 #canvas.grabbing{cursor:grabbing}
 #diagram{position:relative;width:max-content;min-width:100%;padding:46px 56px 64px;transform-origin:top left;user-select:none}
 #edges{position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:1}
-#edge-labels{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2}
+#edge-labels{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4}
 .edge-label{position:absolute;transform:translate(-50%,-50%);font-size:11px;font-weight:700;color:var(--edge-strong);background:var(--canvas-bg);padding:2px 7px;border-radius:7px;border:1px solid var(--divider);white-space:nowrap}
 .edge-label.net{color:var(--accent-dark);border-color:var(--accent);background:var(--accent-soft)}
 
@@ -97,14 +97,21 @@ body{font-family:var(--font);background:var(--canvas-bg);color:var(--ink);overfl
 .chead{display:flex;flex-direction:column;gap:3px;padding:14px 17px 11px;border-bottom:1px solid var(--divider);cursor:pointer;border-radius:16px 16px 0 0}
 .chead:hover{background:rgba(0,0,0,.015)}
 .ct{display:flex;align-items:center;gap:9px}
-.ctitle{font-size:16px;font-weight:800;letter-spacing:-.3px}
+/* the title is itself a clickable chip — same visual language as .pill */
+.ctitle{font-size:15px;font-weight:800;letter-spacing:-.3px;background:var(--canvas-bg);border:1px solid var(--divider);border-left:3px solid var(--layer);border-radius:8px;padding:4px 9px;transition:background .12s,border-color .12s;min-width:0;overflow-wrap:anywhere}
+.chead:hover .ctitle{border-color:var(--layer);background:var(--layer-soft)}
+.chead:active .ctitle{background:var(--layer);border-color:var(--layer);color:#fff}
 .ctech{font-size:11.5px;font-weight:600;color:var(--layer);text-transform:uppercase;letter-spacing:.05em}
 .ctag{margin-left:auto;font-size:10px;font-weight:700;color:#fff;background:var(--layer);padding:2px 7px;border-radius:6px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
 .caret{font-size:11px;color:var(--muted);padding:2px 6px;border-radius:6px;margin-left:6px}
 .caret:hover{background:rgba(0,0,0,.06)}
 .container.collapsed .caret{transform:rotate(-90deg)}
-.netline{font-size:11px;font-family:var(--mono);color:var(--accent-dark);background:var(--accent-soft);border-radius:6px;padding:3px 8px;margin-top:6px;display:none;white-space:nowrap}
+.netline{font-size:11px;font-family:var(--mono);color:var(--accent-dark);background:var(--accent-soft);border-radius:6px;padding:3px 8px;margin-top:6px;display:none;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
 .netline.show{display:block}
+/* entry file path in the header — the file that IS this container */
+.centry{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:2px;overflow-wrap:anywhere;min-width:0}
+.pdim{opacity:.62}
+.pend{font-weight:700;color:var(--ink)}
 .comps{display:flex;flex-wrap:wrap;gap:7px;padding:13px 15px 15px}
 .container.collapsed .comps{display:none}
 .pill{font-size:12.5px;font-weight:600;color:var(--ink);background:var(--canvas-bg);border:1px solid var(--divider);border-left:3px solid var(--layer);border-radius:8px;padding:6px 10px;cursor:pointer;transition:transform .1s,border-color .12s,background .12s}
@@ -132,8 +139,9 @@ body{font-family:var(--font);background:var(--canvas-bg);color:var(--ink);overfl
 .idrow .d2{font-size:13px;line-height:1.55;color:var(--ink)}
 .dlabel{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:11px 0 6px}
 .files{display:flex;flex-direction:column;gap:5px}
-.fl{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--surface);border:1px solid var(--divider);padding:4px 5px 4px 9px;border-radius:7px}
-.fl .path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.fl{display:flex;align-items:flex-start;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--surface);border:1px solid var(--divider);padding:4px 5px 4px 9px;border-radius:7px}
+/* long paths WRAP (never clip / bleed out of the card): shared prefix dim, tail bold */
+.fl .path{flex:1;min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.5;padding-top:2px}
 .fl .cp{flex:none;font-family:var(--font);font-size:10.5px;font-weight:700;color:var(--accent-dark);background:var(--accent-soft);border:none;border-radius:5px;padding:3px 8px;cursor:pointer}
 .fl .cp:hover{background:var(--accent);color:#fff}
 .kids{display:flex;flex-direction:column;gap:7px}
@@ -143,6 +151,76 @@ body{font-family:var(--font);background:var(--canvas-bg);color:var(--ink);overfl
 .talks{display:flex;flex-wrap:wrap;gap:6px}
 .talk{font-size:11.5px;font-weight:600;color:var(--edge-strong);background:var(--surface);border:1px solid var(--divider);border-radius:999px;padding:3px 10px}
 .talk b{color:var(--ink)}
+
+/* ---- What / How / Why — the lead content of a component drill-down ---- */
+.whw{display:flex;flex-direction:column;gap:5px}
+.whw div{font-size:12.5px;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}
+.whw b{display:inline-block;min-width:44px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+
+/* ---- Blender-style ports: inputs dotted on the LEFT edge, outputs on the RIGHT ---- */
+.ports{display:flex;gap:14px;margin:0 -14px;padding:0 4px;align-items:flex-start}
+.pcol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:7px}
+.pcol.out{align-items:flex-end}
+.phead{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.pcol.in .phead{padding-left:16px}
+.pcol.out .phead{padding-right:16px}
+.port{position:relative;font-size:11.5px;line-height:1.4;color:var(--ink);overflow-wrap:anywhere;max-width:100%}
+.pcol.in .port{padding-left:16px}
+.pcol.out .port{padding-right:16px;text-align:right}
+.port .pdot{position:absolute;top:4px;width:9px;height:9px;border-radius:50%;background:var(--layer);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--divider)}
+.pcol.in .port .pdot{left:-4px}
+.pcol.out .port .pdot{right:-4px}
+.port em{display:block;font-style:normal;font-size:10.5px;color:var(--muted);font-weight:600}
+.drawerbtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.flowbtn{font-size:11px;font-weight:700;color:var(--accent-dark);background:var(--accent-soft);border:1px solid var(--accent);border-radius:999px;padding:4px 11px;cursor:pointer;font-family:var(--font)}
+.flowbtn:hover{background:var(--accent);color:#fff}
+
+/* ---- Data-flow / anatomy drawer: slides in from the LEFT, scrollable, nothing clips ---- */
+#scrim{position:fixed;inset:0;background:rgba(8,12,20,.34);opacity:0;pointer-events:none;transition:opacity .2s;z-index:59}
+#scrim.open{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;left:0;height:100%;width:min(470px,94vw);background:var(--surface);border-right:1px solid var(--divider);box-shadow:8px 0 34px rgba(15,23,42,.18);transform:translateX(-104%);transition:transform .26s cubic-bezier(.2,.7,.2,1);z-index:60;display:flex;flex-direction:column}
+#drawer.open{transform:none}
+#drawer .dwhead{flex:none;padding:14px 16px 0;border-bottom:1px solid var(--divider)}
+#drawer .dwtitle{display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:800}
+#drawer .dwtitle .dot{width:8px;height:8px;border-radius:3px;background:var(--layer,var(--accent));flex:none}
+#drawer .dwsub{font-size:11.5px;color:var(--muted);margin-top:3px;font-family:var(--mono);overflow-wrap:anywhere}
+#drawer .dwx{margin-left:auto;color:var(--muted);cursor:pointer;font-size:19px;line-height:1;padding:0 5px}
+#drawer .dwx:hover{color:var(--ink)}
+.dwtabs{display:flex;gap:4px;margin-top:11px}
+.dwtab{font-size:11.5px;font-weight:700;color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;padding:7px 10px;cursor:pointer;font-family:var(--font)}
+.dwtab:hover{color:var(--ink)}
+.dwtab.on{color:var(--ink);border-bottom-color:var(--accent)}
+#drawer .dwbody{flex:1;min-height:0;overflow:auto;padding:16px}
+.lane{display:flex;flex-direction:column;align-items:stretch}
+.fcap{font-size:11px;font-weight:700;color:var(--accent-dark);background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:6px 10px;overflow-wrap:anywhere}
+.fconn{flex:none;height:20px;position:relative}
+.fconn::before{content:"";position:absolute;left:50%;top:0;bottom:6px;width:2px;margin-left:-1px;background:var(--edge)}
+.fconn::after{content:"";position:absolute;left:50%;bottom:0;margin-left:-5px;border:5px solid transparent;border-top-color:var(--edge)}
+.fnode{border:1px solid var(--divider);border-left:3px solid var(--layer,var(--accent));border-radius:10px;background:var(--canvas-bg);padding:10px 12px;min-width:0}
+.fnode.ext{border-style:dashed;border-left-style:solid;border-left-color:var(--accent);background:var(--accent-soft)}
+.fn-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.fn-h .fn-l{font-size:12.5px;font-weight:800;overflow-wrap:anywhere}
+.fn-h .fn-f{font-family:var(--mono);font-size:10.5px;color:var(--muted);overflow-wrap:anywhere}
+.fn-src{font-family:var(--mono);font-size:10px;color:var(--accent-dark);background:var(--surface);border:1px solid var(--divider);border-radius:6px;padding:2px 6px;margin-top:6px;display:block;overflow-wrap:anywhere}
+.fn-io{display:flex;flex-direction:column;gap:3px;margin-top:7px}
+.fn-io div{font-size:11px;line-height:1.45;color:var(--ink);overflow-wrap:anywhere}
+.fn-io b{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-right:6px}
+.subs{margin-top:9px;border-top:1px dashed var(--divider);padding-top:9px}
+.subs .subs-h{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:7px}
+.fnode.sub{padding:8px 10px;background:var(--surface)}
+.fnode.sub .fn-h .fn-l{font-size:11.5px}
+.fnode.sub .fn-io div{font-size:10.5px}
+.subs .fconn{height:15px}
+.branches{display:flex;gap:10px;align-items:stretch}
+.branches .blane{flex:1 1 0;min-width:0;display:flex;flex-direction:column;border:1px dashed var(--divider);border-radius:12px;padding:9px}
+.branches .bname{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:7px}
+.anat{display:flex;flex-direction:column;gap:9px}
+.asec{border:1px solid var(--divider);border-left:3px solid var(--layer,var(--accent));border-radius:10px;background:var(--canvas-bg);padding:10px 12px}
+.asec .a-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.asec .a-n{font-size:12.5px;font-weight:800}
+.asec .a-l{font-family:var(--mono);font-size:10.5px;color:var(--accent-dark);background:var(--accent-soft);border-radius:5px;padding:1px 6px}
+.asec .a-w{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.asec .a-s{font-size:11.5px;line-height:1.5;color:var(--ink);margin-top:6px;overflow-wrap:anywhere}
 
 #tip{position:fixed;z-index:99;pointer-events:none;opacity:0;background:var(--ink);color:#fff;border-radius:9px;padding:8px 11px;font-size:11.5px;font-weight:600}
 #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--ink);color:#fff;font-size:12.5px;font-weight:600;padding:9px 16px;border-radius:9px;opacity:0;transition:opacity .18s,transform .18s;z-index:99;pointer-events:none}
@@ -172,6 +250,15 @@ body{font-family:var(--font);background:var(--canvas-bg);color:var(--ink);overfl
     <div id="rows"></div>
   </div>
 </div>
+<div id="scrim"></div>
+<aside id="drawer" aria-hidden="true">
+  <div class="dwhead">
+    <div class="dwtitle"><span class="dot"></span><span id="dw-title"></span><span class="dwx" id="dw-x">×</span></div>
+    <div class="dwsub" id="dw-sub"></div>
+    <div class="dwtabs" id="dw-tabs"></div>
+  </div>
+  <div class="dwbody" id="dw-body"></div>
+</aside>
 <div id="tip"></div>
 <div id="toast"></div>
 
@@ -181,17 +268,39 @@ body{font-family:var(--font);background:var(--canvas-bg);color:var(--ink);overfl
    Fill from the approved review-gate model + the enrichment pass.
 
    node (a box). kind:'container' has pills; kind:'node' has none.
-     {label, tech, layer, kind, summary, entry:[..], net?, talksTo?[],
-      components:[ {id,label,one, summary, files:[..], kids?[{label,txt}], talksTo?[{to,via}], net?} ]}
+     {label, tech, layer, kind, summary, entry:[..], net?, talksTo?[], components:[…]}
+     entry[0] also renders in the card HEADER (the file that IS this container).
+   component: {id, label, one,
+     summary?           1–2 sentences (fallback when whatHowWhy is absent)
+     whatHowWhy?  {what,how,why}   three short lines — leads the drill-down
+     ports?       {in:[{label,from}], out:[{label,to}]}   Blender-style edge dots
+     flow?        [step]            ordered function chain → "Data flow" drawer tab
+     anatomy?     [{section,lines,runsWhen,summary}]  → "Code anatomy" drawer tab
+     files:[..], kids?[{label,txt}], talksTo?[{to,via}], net?}
+   step:  {id?, label, fn?, file?, external?, in, does, out, branch?, children?:[step]}
+     fn        = the function/symbol that runs (e.g. 'extract_codes()')
+     file      = source file of the step's main function
+     external  = true when that function is IMPORTED from another file → rendered
+                 differently (dashed/accented) with `file` shown, so the reader
+                 knows where to zoom in next.
+     children  = nested sub-cards (the helpers this step calls), each with its own
+                 in/does/out, stacked vertically with arrows in call order.
+     branch    = lane name. CONSECUTIVE steps carrying `branch` form one parallel
+                 group: each distinct value is a side-by-side lane, and the next
+                 step without `branch` is where the lanes re-merge. Omit for a
+                 straight single lane (the normal case).
    edge: {from:<nodeId>, to:<nodeId>, label, net?}   (ids are NODE ids, not component ids)
    layout: rows of node ids, laid out top→down (client → server → data/external).
 
    Detail fields drive the Model D drill-down:
      summary  = 1–2 sentences (component) / 2–3 (card overview)
-     files    = real path(s)/glob(s) — shown with a copy button
+     files    = real path(s)/glob(s) — shown with a copy button; the shared prefix
+                renders dim, the last 1–2 segments bold, and long paths WRAP
      kids     = flat child list (routes/screens/tools/stages/tables), CAP ~8 then "+N more"
      talksTo  = this thing's edges, e.g. {to:'PostgreSQL', via:'PostgREST'}
      net      = networking facts (ports/domains/TLS), shown only when the toggle is on
+   ports/flow/anatomy are OPTIONAL — add them only where they carry real signal
+   (a component with real logic gets a flow; a big file worth studying gets anatomy).
    Keep only the layers you use in `legend`. Everything must trace to real code.
    ============================================================ */
 const MODEL = {
@@ -223,8 +332,38 @@ const MODEL = {
       entry:['app/main.py'],
       components:[
         {id:'be-routes',label:'/api routes',one:'HTTP endpoints',
-          summary:'Route handlers grouped by resource.',files:['app/api/routes/*.py']},
+          summary:'Route handlers grouped by resource.',files:['app/api/routes/*.py','app/api/routes/v1/organizations/members.py']},
+        // ── a component with the full richer detail: what/how/why · ports · flow · anatomy ──
         {id:'be-services',label:'Services',one:'business logic',
+          whatHowWhy:{what:'The use-case layer the routes call.',
+                      how:'Each service validates its input, runs the domain rules, then commits through the session.',
+                      why:'Keeps business rules out of HTTP handlers and makes them the only writer to Postgres.'},
+          ports:{in:[{label:'validated request payload',from:'/api routes'},
+                     {label:'DB session',from:'app/db.py (dependency)'}],
+                 out:[{label:'persisted rows → system of record',to:'PostgreSQL (SQL)'},
+                      {label:'domain result → JSON response',to:'/api routes'}]},
+          flow:[
+            {label:'Receive & validate',fn:'Service.handle()',file:'app/services/base.py',
+             in:'Pydantic request model',does:'Checks tenant + permissions, normalises fields.',out:'Validated command object'},
+            {label:'Apply domain rules',fn:'apply_rules()',file:'app/domain/rules.py',external:true,
+             in:'Validated command object',does:'Pure domain logic, imported from the domain package.',out:'Change set',
+             children:[
+               {label:'Price it',fn:'price()',in:'Change set draft',does:'Looks up the plan and computes totals.',out:'Priced change set'},
+               {label:'Check limits',fn:'enforce_quota()',in:'Priced change set',does:'Rejects if the tenant is over quota.',out:'Approved change set'},
+             ]},
+            {label:'Persist',fn:'session.commit()',branch:'write path',
+             in:'Approved change set',does:'Writes rows in one transaction.',out:'Committed rows'},
+            {label:'Emit failure',fn:'raise DomainError',branch:'error path',
+             in:'Rejected change set',does:'Rolls back and maps the error to a 4xx.',out:'DomainError'},
+            {label:'Return result',fn:'to_dto()',
+             in:'Committed rows or DomainError',does:'Serialises to the response DTO.',out:'JSON-ready dict → route handler'},
+          ],
+          anatomy:[
+            {section:'Imports',lines:'1–24',runsWhen:'at import',summary:'stdlib, SQLAlchemy session, domain rules, DTOs.'},
+            {section:'Module-level setup',lines:'26–41',runsWhen:'once at import',summary:'Logger and the service registry dict.'},
+            {section:'Definitions',lines:'43–188',runsWhen:'dormant until called',summary:'Service classes — one per use-case.'},
+            {section:'Entry points',lines:'190–232',runsWhen:'per request',summary:'handle() coroutines the route handlers await.'},
+          ],
           summary:'Use-cases the routes call; the only layer that touches the DB.',files:['app/services/*.py'],talksTo:[{to:'PostgreSQL',via:'SQL'}]},
         {id:'be-llm',label:'LLM client',one:'external calls',
           summary:'Wraps the model provider.',files:['app/services/llm.py'],talksTo:[{to:'External APIs',via:'HTTPS'}]},
@@ -258,7 +397,7 @@ const lv=l=>`--layer:var(--l-${l});--layer-soft:var(--l-${l}-soft)`;
 $('legend').innerHTML = MODEL.legend.map(([l,name])=>
   `<span class="lg"><span class="sw" style="background:var(--l-${l}-soft);border-color:var(--l-${l})"></span>${name}</span>`).join('')
   + `<span class="eh"><svg viewBox="0 0 32 12"><line x1="0" y1="6" x2="26" y2="6" stroke="var(--edge)" stroke-width="2"/><path d="M26 2 L32 6 L26 10 Z" fill="var(--edge)"/></svg>calls / data flow</span>`
-  + `<span class="tip-hint">· click a card or pill to expand it in place · toggle network details above</span>`;
+  + `<span class="tip-hint">· click a card or pill to expand it in place · open its data flow / code anatomy · toggle network details above</span>`;
 
 /* Topbar text comes from MODEL — no {{placeholders}} to hand-edit. */
 document.title = MODEL.repo + ' — Architecture Map';
@@ -280,9 +419,10 @@ function renderDiagram(){
         el.innerHTML=`<div class="nhead"><div class="nt">${esc(n.label)}</div><div class="ns">${esc(n.tech)}</div></div>${netLine}<div class="inline" data-inline="${id}"></div>`;
       }else{
         el.className='container';
+        const entryLine=(n.entry&&n.entry[0])?`<div class="centry" title="${esc(n.entry[0])}">${pathHtml(n.entry[0])}</div>`:'';
         el.innerHTML=`<div class="chead" data-cid="${id}">
             <div class="ct"><span class="ctitle">${esc(n.label)}</span><span class="ctag">${esc(n.layer)}</span><span class="caret" data-collapse="${id}">▼</span></div>
-            <span class="ctech">${esc(n.tech)}</span>${netLine}</div>
+            <span class="ctech">${esc(n.tech)}</span>${entryLine}${netLine}</div>
           <div class="comps">${(n.components||[]).map(cm=>`<div class="pill" data-cid="${id}" data-comp="${cm.id}">${esc(cm.label)}</div>`).join('')}</div>
           <div class="inline" data-inline="${id}"></div>`;
       }
@@ -292,15 +432,39 @@ function renderDiagram(){
   }
   applyNetLines();
 }
-function filesHtml(files){return `<div class="dlabel">Files</div><div class="files">`+files.map(f=>{const p=esc(f);return `<div class="fl"><span class="path" title="${p}">${p}</span><button class="cp" data-copy="${p}">copy</button></div>`}).join('')+`</div>`}
+/* a path renders with its directory prefix dim and the last 1–2 segments prominent;
+   it WRAPS (see .fl .path) so a long path can never bleed out of a card. */
+function pathHtml(p){
+  const parts=String(p||'').split('/'); const keep=parts.length>2?2:parts.length;
+  const head=parts.slice(0,parts.length-keep).join('/'), tail=parts.slice(parts.length-keep).join('/');
+  return (head?`<span class="pdim">${esc(head)}/</span>`:'')+`<span class="pend">${esc(tail)}</span>`;
+}
+function fileChip(f){return `<div class="fl"><span class="path" title="${esc(f)}">${pathHtml(f)}</span><button class="cp" data-copy="${esc(f)}">copy</button></div>`}
+function filesHtml(files){return `<div class="dlabel">Files</div><div class="files">`+files.map(fileChip).join('')+`</div>`}
+function whwHtml(w){return `<div class="whw">`
+  +(w.what?`<div><b>What</b>${esc(w.what)}</div>`:'')
+  +(w.how?`<div><b>How</b>${esc(w.how)}</div>`:'')
+  +(w.why?`<div><b>Why</b>${esc(w.why)}</div>`:'')+`</div>`}
+function portsHtml(p){
+  const col=(items,cls)=>`<div class="pcol ${cls}"><div class="phead">${cls==='in'?'Inputs':'Outputs'}</div>`
+    +(items||[]).map(x=>`<div class="port"><span class="pdot"></span>${esc(x.label)}`
+      +((x.from||x.to)?`<em>${cls==='in'?'from ':'to '}${esc(x.from||x.to)}</em>`:'')+`</div>`).join('')+`</div>`;
+  return `<div class="dlabel">Ports</div><div class="ports">${col(p.in,'in')}${col(p.out,'out')}</div>`;
+}
 function kidsHtml(kids){return `<div class="dlabel">Inside</div><div class="kids">`+kids.map(k=>`<div class="kid"><b>${esc(k.label)}</b><span>${esc(k.txt)}</span></div>`).join('')+`</div>`}
 function talksHtml(t){return `<div class="dlabel">Talks to</div><div class="talks">`+t.map(x=>`<span class="talk"><b>${esc(x.to)}</b> · ${esc(x.via)}</span>`).join('')+`</div>`}
-function detailBody(d){
-  return `<div class="d2">${esc(d.summary)}</div>`
-    + (d.entry?`<div class="dlabel">Entry point</div><div class="files">`+d.entry.map(f=>{const p=esc(f);return `<div class="fl"><span class="path">${p}</span><button class="cp" data-copy="${p}">copy</button></div>`}).join('')+`</div>`:'')
+function detailBody(d,cid,key){
+  const btns=[];
+  if(d.flow)btns.push(`<button class="flowbtn" data-drawer="flow" data-dcid="${cid}" data-dkey="${key}">◧ Data flow</button>`);
+  if(d.anatomy)btns.push(`<button class="flowbtn" data-drawer="anatomy" data-dcid="${cid}" data-dkey="${key}">◫ Code anatomy</button>`);
+  return (d.whatHowWhy?whwHtml(d.whatHowWhy):(d.summary?`<div class="d2">${esc(d.summary)}</div>`:''))
+    + (d.ports?portsHtml(d.ports):'')
+    + (btns.length?`<div class="drawerbtns">${btns.join('')}</div>`:'')
+    + (d.entry?`<div class="dlabel">Entry point</div><div class="files">`+d.entry.map(fileChip).join('')+`</div>`:'')
     + (d.files?filesHtml(d.files):'')
     + (d.kids?kidsHtml(d.kids):'')
-    + (d.talksTo?talksHtml(d.talksTo):'');
+    + (d.talksTo?talksHtml(d.talksTo):'')
+    + (d.net?`<div class="dlabel">Networking</div><div class="netline show">${esc(d.net)}</div>`:'');
 }
 function toggleInline(cid,key){
   const host=document.querySelector(`.inline[data-inline="${cid}"]`);
@@ -312,12 +476,81 @@ function toggleInline(cid,key){
     const d=key==='__overview__'?{summary:n.summary,entry:n.entry,files:n.files,talksTo:n.talksTo}:n.components.find(x=>x.id===key);
     const title=key==='__overview__'?n.label+' — overview':d.label;
     const div=document.createElement('div'); div.className='idrow'; div.dataset.c=key;
-    div.innerHTML=`<div class="idrow-h"><span class="dot"></span>${esc(title)}<span class="idrow-x">×</span></div>`+detailBody(d);
+    div.innerHTML=`<div class="idrow-h"><span class="dot"></span>${esc(title)}<span class="idrow-x">×</span></div>`+detailBody(d,cid,key);
     host.appendChild(div); if(pill)pill.classList.add('active');
   }
   host.closest('.container,.node').classList.toggle('expanded', host.children.length>0);
   drawEdges();
 }
+/* ---- Data-flow / anatomy drawer (slides in from the left, scrollable) ---------------- */
+const drawer=$('drawer'),scrim=$('scrim');
+let dwState=null;                                   // {cid,key,tab}
+function stepHtml(s,sub){
+  const ext=s.external?' ext':'';
+  return `<div class="fnode${sub?' sub':''}${ext}">
+      <div class="fn-h"><span class="fn-l">${esc(s.label)}</span>${s.fn?`<span class="fn-f">${esc(s.fn)}</span>`:''}</div>
+      ${s.file?`<span class="fn-src" title="${esc(s.file)}">${s.external?'imported from ':''}${pathHtml(s.file)}</span>`:''}
+      <div class="fn-io">
+        ${s.in?`<div><b>In</b>${esc(s.in)}</div>`:''}
+        ${s.does?`<div><b>Does</b>${esc(s.does)}</div>`:''}
+        ${s.out?`<div><b>Out</b>${esc(s.out)}</div>`:''}
+      </div>
+      ${(s.children&&s.children.length)?`<div class="subs"><div class="subs-h">Calls, in order</div>`
+        +s.children.map((c,i)=>(i?`<div class="fconn"></div>`:'')+stepHtml(c,true)).join('')+`</div>`:''}
+    </div>`;
+}
+/* consecutive steps carrying `branch` become side-by-side lanes that re-merge afterwards */
+function flowHtml(flow,ports){
+  if(!flow.length)return '';
+  const groups=[];
+  for(const s of flow){
+    const last=groups[groups.length-1];
+    if(s.branch){ if(last&&last.par){last.steps.push(s);} else groups.push({par:true,steps:[s]}); }
+    else groups.push({par:false,steps:[s]});
+  }
+  const blocks=groups.map(g=>{
+    if(!g.par)return stepHtml(g.steps[0],false);
+    const lanes={}; const order=[];
+    for(const s of g.steps){ if(!lanes[s.branch]){lanes[s.branch]=[];order.push(s.branch);} lanes[s.branch].push(s); }
+    return `<div class="branches">`+order.map(name=>`<div class="blane"><div class="bname">${esc(name)}</div>`
+      +lanes[name].map((s,i)=>(i?`<div class="fconn"></div>`:'')+stepHtml(s,false)).join('')+`</div>`).join('')+`</div>`;
+  });
+  /* the lane is capped: what enters at the TOP, what leaves at the BOTTOM */
+  const inCap=(ports&&ports.in||[]).map(p=>p.label).join(' · ')||flow[0].in||'';
+  const outCap=(ports&&ports.out||[]).map(p=>p.label).join(' · ')||flow[flow.length-1].out||'';
+  const caps=[]; if(inCap)caps.push(`<div class="fcap">▼ IN &nbsp;${esc(inCap)}</div>`,`<div class="fconn"></div>`);
+  const tail=outCap?[`<div class="fconn"></div>`,`<div class="fcap">▲ OUT &nbsp;${esc(outCap)}</div>`]:[];
+  return `<div class="lane">`+caps.join('')+blocks.map((b,i)=>(i?`<div class="fconn"></div>`:'')+b).join('')+tail.join('')+`</div>`;
+}
+function anatomyHtml(a){
+  return `<div class="anat">`+a.map(s=>`<div class="asec">
+      <div class="a-h"><span class="a-n">${esc(s.section)}</span>${s.lines?`<span class="a-l">lines ${esc(s.lines)}</span>`:''}${s.runsWhen?`<span class="a-w">${esc(s.runsWhen)}</span>`:''}</div>
+      ${s.summary?`<div class="a-s">${esc(s.summary)}</div>`:''}</div>`).join('')+`</div>`;
+}
+function dwData(){const n=MODEL.nodes[dwState.cid];
+  return {n, d:(n.components||[]).find(x=>x.id===dwState.key)||{}};}
+function renderDrawer(){
+  if(!dwState)return;
+  const {n,d}=dwData();
+  drawer.setAttribute('style',lv(n.layer));
+  $('dw-title').textContent=d.label||n.label;
+  const src=(d.files&&d.files[0])||(n.entry&&n.entry[0])||'';
+  $('dw-sub').innerHTML=src?pathHtml(src):'';
+  const tabs=[]; if(d.flow)tabs.push(['flow','Data flow']); if(d.anatomy)tabs.push(['anatomy','Code anatomy']);
+  if(!tabs.some(t=>t[0]===dwState.tab))dwState.tab=tabs.length?tabs[0][0]:'flow';
+  $('dw-tabs').innerHTML=tabs.map(([k,label])=>`<button class="dwtab${k===dwState.tab?' on':''}" data-dwtab="${k}">${label}</button>`).join('');
+  $('dw-body').innerHTML=dwState.tab==='anatomy'?anatomyHtml(d.anatomy||[]):flowHtml(d.flow||[],d.ports);
+  $('dw-body').scrollTop=0;
+}
+function openDrawer(cid,key,tab){dwState={cid,key,tab};renderDrawer();
+  drawer.classList.add('open');scrim.classList.add('open');drawer.setAttribute('aria-hidden','false');}
+function closeDrawer(){drawer.classList.remove('open');scrim.classList.remove('open');drawer.setAttribute('aria-hidden','true');}
+scrim.addEventListener('click',closeDrawer);
+$('dw-x').addEventListener('click',closeDrawer);
+addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
+drawer.addEventListener('click',e=>{const t=e.target.closest('[data-dwtab]');
+  if(t){dwState.tab=t.dataset.dwtab;renderDrawer();}});
+
 /* arrows: getBoundingClientRect, recomputed on every layout change (expand/zoom/resize) */
 function relRect(el){const r=el.getBoundingClientRect(),b=diagram.getBoundingClientRect();
   return {left:(r.left-b.left)/zoom,top:(r.top-b.top)/zoom,right:(r.right-b.left)/zoom,bottom:(r.bottom-b.top)/zoom,
@@ -397,6 +630,8 @@ function flash(m){toast.textContent=m;toast.classList.add('show');clearTimeout(t
 document.addEventListener('click',e=>{
   const cp=e.target.closest('.cp');
   if(cp){navigator.clipboard?.writeText(cp.dataset.copy).then(()=>flash('Copied  '+cp.dataset.copy)).catch(()=>flash('Copy failed'));return;}
+  const db=e.target.closest('[data-drawer]');
+  if(db){e.stopPropagation();openDrawer(db.dataset.dcid,db.dataset.dkey,db.dataset.drawer);return;}
   const col=e.target.closest('[data-collapse]');
   if(col){e.stopPropagation();col.closest('.container').classList.toggle('collapsed');drawEdges();return;}
   const x=e.target.closest('.idrow-x');

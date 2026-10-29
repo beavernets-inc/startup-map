@@ -57,6 +57,8 @@ python3 skills/portfolio-map/scripts/build.py path/to/map-data.json [out.html]
 python3 skills/portfolio-map/scripts/build.py --selftest
 ```
 
+An architecture map generated for a real open-source repo (vercel/ai-chatbot) is in `examples/ai-chatbot.html`.
+
 Try it on the example: `python3 skills/portfolio-map/scripts/build.py examples/map-data.json`
 (the example's repo paths do not exist, so its cards say "repo not found").
 
