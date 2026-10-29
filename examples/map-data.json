@@ -1,0 +1,59 @@
+{
+  "title": "Kestrel Works portfolio map",
+  "org": "Kestrel Works",
+  "sources": ["examples/map-data.json (fictional)"],
+  "groups": [
+    {"id": "fintech", "label": "Small-business finance"},
+    {"id": "health", "label": "Clinic tools"},
+    {"id": "research", "label": "Research"},
+    {"id": "side", "label": "Side projects"},
+    {"id": "general", "label": "General connections", "color": "#94a3b8"}
+  ],
+  "projects": [
+    {"id": "ledgerly", "label": "Ledgerly", "group": "fintech", "stage": "paying", "repo": "repos/ledgerly",
+     "note": "Invoice reminders for trades businesses. Two paying pilot customers.",
+     "next": {"step": "Ship the bulk-reminder feature the pilot asked for", "why": "It is the one blocker to the second pilot renewing", "owner": "Jordan + Priya"}},
+    {"id": "tidepool", "label": "Tidepool", "group": "health", "stage": "in-use", "repo": "repos/tidepool",
+     "note": "Shift-swap board for small physio clinics. One clinic uses it weekly.",
+     "next": {"step": "Book a 30-minute feedback call with the front-desk lead", "why": "Usage dipped last week and nobody knows why yet", "owner": "Jordan"}},
+    {"id": "fieldnote", "label": "Fieldnote", "group": "research", "stage": "building", "repo": "repos/fieldnote",
+     "note": "Interview-notes tagger for user research, built with a university lab.",
+     "next": {"step": "Send the tagging prototype to the lab for a dry run", "why": "The lab's grant report is due next month", "owner": "Priya"}},
+    {"id": "pocket-garden", "label": "Pocket Garden", "group": "side", "stage": "live", "repo": "repos/pocket-garden",
+     "note": "Tiny browser game. Deployed, no real players yet.",
+     "next": {"step": "Post the playable build in two indie-dev forums", "why": "It needs its first ten players", "owner": "Jordan"}},
+    {"id": "general", "label": "General connections", "group": "general", "stage": "network",
+     "note": "People who help across everything but do not belong to one project.",
+     "next": {"step": "Thank-you note to the accelerator mentor", "why": "Keeps the door open for the spring cohort", "owner": "Jordan"}}
+  ],
+  "people": [
+    {"id": "Jordan Vale", "internal": true, "status": "warm", "channel": "in person", "last": "2026-10-28", "note": "Founder. Runs product and sales."},
+    {"id": "Priya Okonkwo-Lind", "internal": true, "status": "warm", "channel": "chat", "last": "2026-10-27", "note": "Part-time engineer, owns Fieldnote's backend."},
+    {"id": "Marta Quillfeather", "status": "booked", "channel": "email", "last": "2026-10-26", "note": "Owner of the second pilot business. Renewal call booked."},
+    {"id": "Dev Halloran", "status": "replied", "channel": "email", "last": "2026-10-22", "note": "First pilot customer; asked for bulk reminders."},
+    {"id": "Inez Brightwater", "status": "sent", "channel": "LinkedIn", "last": "2026-10-10", "note": "Bookkeeper who could resell Ledgerly to her clients. No reply yet."},
+    {"id": "Dr. Tomas Fennick", "status": "warm", "channel": "phone", "last": "2026-10-20", "note": "Clinic owner using Tidepool; also advising on Fieldnote's clinical interview set."},
+    {"id": "Rosa Delacroix-Ng", "status": "sent", "channel": "email", "last": "2026-10-24", "note": "Front-desk lead at the Tidepool clinic."},
+    {"id": "Prof. Amaru Castellane", "status": "warm", "channel": "email", "last": "2026-10-18", "note": "Runs the research lab co-developing Fieldnote."},
+    {"id": "Wren Abernathy", "status": "closed", "channel": "email", "last": "2026-08-30", "note": "Grant officer; program closed for this year."},
+    {"id": "Sol Mackintyre", "status": "replied", "channel": "Discord", "last": "2026-09-20", "note": "Indie dev who offered to playtest Pocket Garden."},
+    {"id": "Hana Wexley", "status": "warm", "channel": "in person", "last": "2026-10-15", "note": "Accelerator mentor; intro'd Marta and Prof. Castellane."}
+  ],
+  "edges": [
+    {"s": "Jordan Vale", "t": "ledgerly", "type": "founder"},
+    {"s": "Jordan Vale", "t": "tidepool", "type": "founder"},
+    {"s": "Jordan Vale", "t": "pocket-garden", "type": "solo dev"},
+    {"s": "Priya Okonkwo-Lind", "t": "ledgerly", "type": "engineer"},
+    {"s": "Priya Okonkwo-Lind", "t": "fieldnote", "type": "lead engineer"},
+    {"s": "Marta Quillfeather", "t": "ledgerly", "type": "pilot customer", "category": "customer"},
+    {"s": "Dev Halloran", "t": "ledgerly", "type": "pilot customer", "category": "customer"},
+    {"s": "Inez Brightwater", "t": "ledgerly", "type": "reseller", "category": "bizdev"},
+    {"s": "Dr. Tomas Fennick", "t": "tidepool", "type": "clinic owner", "category": "customer"},
+    {"s": "Dr. Tomas Fennick", "t": "fieldnote", "type": "clinical advisor", "category": "bizdev"},
+    {"s": "Rosa Delacroix-Ng", "t": "tidepool", "type": "daily user", "category": "customer"},
+    {"s": "Prof. Amaru Castellane", "t": "fieldnote", "type": "research partner", "category": "bizdev"},
+    {"s": "Wren Abernathy", "t": "fieldnote", "type": "funder", "category": "bizdev"},
+    {"s": "Sol Mackintyre", "t": "pocket-garden", "type": "playtester", "category": "customer"},
+    {"s": "Hana Wexley", "t": "general", "type": "mentor", "category": "bizdev"}
+  ]
+}

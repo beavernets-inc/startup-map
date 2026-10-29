@@ -1,0 +1,9 @@
+{
+  "name": "startup-map",
+  "displayName": "Startup Map",
+  "version": "0.1.0",
+  "description": "Map your projects, the people on them, and each repo's architecture as self-contained HTML pages.",
+  "author": { "name": "Saman Nasoori" },
+  "license": "MIT",
+  "keywords": ["portfolio", "crm", "architecture", "c4", "diagram", "founder"]
+}

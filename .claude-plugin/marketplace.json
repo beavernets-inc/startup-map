@@ -1,0 +1,12 @@
+{
+  "name": "startup-map",
+  "description": "Startup Map plugin for Claude Code",
+  "owner": { "name": "Saman Nasoori" },
+  "plugins": [
+    {
+      "name": "startup-map",
+      "source": "./",
+      "description": "Portfolio map of projects + people, plus per-repo architecture maps"
+    }
+  ]
+}
